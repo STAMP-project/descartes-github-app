@@ -1,0 +1,58 @@
+Modifying descartes_github_app.py
+---------------------------------
+* activate environment (cd descartes-github-app; source bin/activate)
+* modify descartes_github_app.py
+* restart the service (sudo systemctl restart descartes_uwsgi.service)
+
+
+Initial setup
+-------------
+Steps:
+
+* log on vmi1.stamp-project.eu (ssh stamp@vmi1.stamp-project.eu)
+* Install nginx (sudo apt-get install nginx)
+* Install python3 (sudo apt-get install python3)
+* Install virtualenv (sudo pip install virtualenv)
+* Create the folder (virtualenv [FOLDER])
+* Enter into [FOLDER] and activate environment (cd [FOLDER]; source bin/activate)
+* Develop the app!
+
+
+* vi descartes-github-app.ini
+
+* sudo vi /etc/init/descartes-github-app.conf
+description "uWSGI server instance configured to serve descartes-github-app"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+setuid user
+setgid www-data
+
+env PATH=/home/stamp/descartes-github-app/bin
+chdir /home/user/descartes-github-app
+exec uwsgi --ini descartes-github-app.ini
+
+
+* sudo vi /etc/systemd/system/descartes_uwsgi.service
+[Unit]
+Description=uWSGI instance to serve descartes-github-app
+After=network.target
+
+[Service]
+User=stamp
+Group=www-data
+WorkingDirectory=/home/stamp/descartes-github-app
+Environment="PATH=/home/stamp/descartes-github-app/bin"
+ExecStart=/home/stamp/descartes-github-app/bin/uwsgi --ini descartes-github-app.ini
+
+[Install]
+WantedBy=multi-user.target
+
+* sudo systemctl start descartes_uwsgi.service
+* sudo systemctl enable descartes_uwsgi.service
+* sudo vi /etc/nginx/sites-available/descartes-github-app
+* sudo cd /etc/nginx/sites-enabled; sudo ln -s ../sites-available/descartes-github-app .
+* sudo nginx -t
+* sudo systemctl restart nginx
+
