@@ -79,3 +79,23 @@ def get_jwt(app_id=APP_ID):
         key = RSA.importKey(_file.read())
         jwtPayload = {'iat': time.time(), 'exp': time.time() + 300, 'iss': app_id}
         return jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm='RS256').decode('ascii')
+
+def get_repo(cloneUrl, commitSha):
+    workingDir = 'descartesWorkingDir'
+    command = 'git clone ' + cloneUrl  + ' ' + workingDir
+    gitClone = subprocess.Popen(command,
+        stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+        stderr = subprocess.STDOUT, shell = True)
+    stdoutData, stderrData = gitClone.communicate()
+    if gitClone.returncode != 0:
+        raise Exception('git clone failed: ' + stdoutData)
+
+    os.chdir(workingDir)
+
+    command = 'git checkout ' + commitSha
+    gitCheckout = subprocess.Popen(command,
+        stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+        stderr = subprocess.STDOUT, shell = True)
+    stdoutData, stderrData = gitCheckout.communicate()
+    if gitCheckout.returncode != 0:
+        raise Exception('git checkout failed: ' + stdoutData)
