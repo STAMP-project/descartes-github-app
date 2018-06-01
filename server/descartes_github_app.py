@@ -10,14 +10,18 @@ import jwt
 from Crypto.PublicKey import RSA
 import time
 import datetime
-
-from workers import create_work
+import os
+import subprocess
+import pika
 
 ## Yet Another shallow comment
 
 GITHUB_API = 'https://api.github.com/'
 APP_ID = 12748
 CHECK_RUN_NAME = 'Looking for pseudo-tested methods'
+
+DEFAULT_QUEUE = 'executions'
+
 ################################################################################
 # don't change the variable name 'application' otherwise uwsgi won't work anymore
 application = Flask(__name__)
