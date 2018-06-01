@@ -57,19 +57,22 @@ def start_check_run(installation, url, params):
                 'Authorization': 'token ' + token,  
                 'Accept': 'application/vnd.github.antiope-preview+json',
             })
-    if response.status_code != 200:
+    if not success(response):
         raise Exception('Could not create the check run. Code {}. Response: {}'.format(response.status_code, response.text))
     return json.loads(response.text)
 
 def request_token(installation):
-    token_response = requests.post(GITHUB_API + 'installation/{}/access_tokens'.format(installation),
+    token_response = requests.post(GITHUB_API + 'installations/{}/access_tokens'.format(installation),
     headers = {
         'Authorization': 'Bearer ' + get_jwt(),
         'Accept': 'application/vnd.github.machine-man-preview+json'  
     })
-    if token_response.status_code != 200:
+    if not success(token_response):
         raise Exception('Could not get the installation access token. Code: {}, response {}'.format(token_response.status_code, token_response.text))
-    return token_response['token']
+    return json.loads(token_response.text)['token']
+
+def success(response):
+    return 200 <= response.status_code < 300
 
 def get_jwt(app_id=APP_ID):
     with open('descartes_app.pem', 'r') as _file:
