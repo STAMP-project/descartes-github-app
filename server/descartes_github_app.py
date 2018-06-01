@@ -49,9 +49,9 @@ def dump(data, prefix='dump'):
     with open(unique_filename, 'w') as _file:
         json.dump(data, _file)
 
-def start_check_run(installation, url, params):
+def start_check_run(installation, repo_url, params):
     token = request_token(installation)
-    response = requests.post(url, 
+    response = requests.post(repo_url + '/check-runs', 
             data= json.dumps(params),
             headers={
                 'Authorization': 'token ' + token,  
