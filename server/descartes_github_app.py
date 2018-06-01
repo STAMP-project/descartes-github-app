@@ -37,8 +37,8 @@ def pullrequest_opened():
         {
             'name': CHECK_RUN_NAME,
             'status': 'in_progress',
-            'head_branch': pull_request['base']['ref'],
-            'head_sha': pull_request['base']['sha']
+            'head_branch': pull_request['head']['ref'],
+            'head_sha': pull_request['head']['sha']
         })
 
     dump(information, 'information')
