@@ -42,7 +42,7 @@ def pullrequest_opened():
         payload['repository']['url'], 
         {
             'name': CHECK_RUN_NAME,
-            'status': 'in_progress',
+            'status': 'queued',
             'head_branch': pull_request['head']['ref'],
             'head_sha': pull_request['head']['sha']
         })
