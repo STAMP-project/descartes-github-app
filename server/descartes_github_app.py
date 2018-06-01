@@ -11,6 +11,8 @@ from Crypto.PublicKey import RSA
 import time
 import datetime
 
+from workers import create_work
+
 ## Yet Another shallow comment
 
 GITHUB_API = 'https://api.github.com/'
@@ -42,6 +44,7 @@ def pullrequest_opened():
         })
 
     dump(information, 'information')
+    create_work({'event': payload, 'check_run': information})
     return 'Everything went well :)'
 
 def dump(data, prefix='dump'):
@@ -60,6 +63,29 @@ def start_check_run(installation, repo_url, params):
     if not success(response):
         raise Exception('Could not create the check run. Code {}. Response: {}'.format(response.status_code, response.text))
     return json.loads(response.text)
+
+
+def update_check_run(url, status, installation, conclusion=None, output=None):
+    '''
+    url - Must contain the check_run id at the end
+    '''
+    token = request_token(installation)
+    data = {'name': CHECK_RUN_NAME, 'status': status}
+    if conclusion:
+        data['status'] = 'completed'
+        data['conclusion'] = conclusion
+        data['completed_at'] = time.strftime('%Y-%m-%dT%H:%M:%S%Z')
+    if output:
+        data['output'] = output
+    response = requests.patch(url, data=json.dumps(data), headers = {
+        'Authorization': 'token ' + token,  
+        'Accept': 'application/vnd.github.antiope-preview+json',
+    })
+    if not success(response):
+        raise Exception('Could not update the check run. Code {}. Response: {}'.format(response.status_code, response.text))
+
+
+
 
 def request_token(installation):
     token_response = requests.post(GITHUB_API + 'installations/{}/access_tokens'.format(installation),
@@ -80,22 +106,4 @@ def get_jwt(app_id=APP_ID):
         jwtPayload = {'iat': time.time(), 'exp': time.time() + 300, 'iss': app_id}
         return jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm='RS256').decode('ascii')
 
-def get_repo(cloneUrl, commitSha):
-    workingDir = 'descartesWorkingDir'
-    command = 'git clone ' + cloneUrl  + ' ' + workingDir
-    gitClone = subprocess.Popen(command,
-        stdin = subprocess.PIPE, stdout = subprocess.PIPE,
-        stderr = subprocess.STDOUT, shell = True)
-    stdoutData, stderrData = gitClone.communicate()
-    if gitClone.returncode != 0:
-        raise Exception('git clone failed: ' + stdoutData)
 
-    os.chdir(workingDir)
-
-    command = 'git checkout ' + commitSha
-    gitCheckout = subprocess.Popen(command,
-        stdin = subprocess.PIPE, stdout = subprocess.PIPE,
-        stderr = subprocess.STDOUT, shell = True)
-    stdoutData, stderrData = gitCheckout.communicate()
-    if gitCheckout.returncode != 0:
-        raise Exception('git checkout failed: ' + stdoutData)
