@@ -72,7 +72,7 @@ def request_token(installation):
     return token_response['token']
 
 def get_jwt(app_id=APP_ID):
-    with open('private2.pem', 'r') as _file:
+    with open('descartes_app.pem', 'r') as _file:
         key = RSA.importKey(_file.read())
         jwtPayload = {'iat': time.time(), 'exp': time.time() + 300, 'iss': app_id}
         return jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm='RS256').decode('ascii')
