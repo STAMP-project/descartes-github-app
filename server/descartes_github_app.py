@@ -11,6 +11,11 @@ from Crypto.PublicKey import RSA
 import time
 import datetime
 
+
+
+GITHUB_API = 'https://api.github.com/'
+APP_ID = 12748
+CHECK_RUN_NAME = 'Looking for pseudo-tested methods'
 ################################################################################
 # don't change the variable name 'application' otherwise uwsgi won't work anymore
 application = Flask(__name__)
@@ -25,61 +30,49 @@ def pullrequest_opened():
         return 'No pull request event', 400
     dump(payload, 'pr')
     pull_request = payload['pull_request']
-    response = {'name': 'pseudo-tested methods', 'status': 'in_progress', 'head_branch': pull_request['head']['ref'], 'head_sha': pull_request['head']['sha']}
-    gh_response = requests.post(payload['repository']['url'] + '/check-runs', \
-        data=response, headers={'Authorization': 'Bearer ' + get_jwt(str(pull_request['number'])), \
-        'Accept': 'application/vnd.github.antiope-preview+json'})
-    if gh_response.status_code != requests.codes.ok:
-        raise Exception('Status ' + str(gh_response.status_code) + gh_response.text)
-    return "Done"
 
+    information = start_check_run(
+        payload['installation']['id'], 
+        payload['repository']['url'], 
+        {
+            'name': CHECK_RUN_NAME,
+            'status': 'in_progress',
+            'head_branch': pull_request['head']['ref'],
+            'head_sha': pull_request['head']['sha']
+        })
 
+    dump(information, 'information')
+    return 'Everything went well :)'
 
 def dump(data, prefix='dump'):
     unique_filename = prefix + '_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '.json'
     with open(unique_filename, 'w') as _file:
         json.dump(data, _file)
-    
 
-#def hello_world():
-#    payload = request.json
-#    if not 'action' in payload:
-#        return ''
-#    if not 'check_suite' in payload:
-#        return ''
-#    pull_requests = payload['check_suite']['pull_requests']
-#    unique_filename = 'dump_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '.json'
-#    with open(unique_filename, 'w') as _file:
-#        json.dump(request.json, _file)
-#    if not pull_requests:
-#        print('exiting because of no pull_requests')
-#        return ''
-#    pr = pull_requests[0]
-#
-#    response = {'name': 'finding-pseudo-tested-methods', 
-#                'head_branch': pr['base']['ref'], 
-#                'head_sha':pr['base']['sha'], 
-#                'status': 'in_progress'}
-#    print('post check-run to: ' + payload['repository']['url'] + '/check-runs')
-#    print('    data: ' + response)
-#    gh_response = requests.post(payload['repository']['url'] + '/check-runs', \
-#        data=response, headers={'Authorization': 'Bearer ' + get_jwt(str(pr['number'])), \
-#        'Accept': 'application/vnd.github.antiope-preview+json'})
-#    if gh_response.status_code != requests.codes.ok:
-#        raise Exception('Status ' + str(gh_response.status_code) + gh_response.text)
-#    unique_filename = 'response_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '.txt'
-#    with open(unique_filename, 'w') as _file:
-#        json.dump(gh_response.text, _file)
-#
-#    unique_filename = 'payload_' + str(uuid.uuid4()) + '.json'
-#    with open(unique_filename, 'w') as _file:
-#        json.dump(request.json, _file)
-#    return "Done"
+def start_check_run(installation, url, params):
+    token = request_token(installation)
+    response = requests.post(url, 
+            data= json.dumps(params),
+            headers={
+                'Authorization': 'token ' + token,  
+                'Accept': 'application/vnd.github.antiope-preview+json',
+            })
+    if response.status_code != 200:
+        raise Exception('Could not create the check run. Code {}. Response: {}'.format(response.status_code, response.text))
+    return json.loads(response.text)
 
-################################################################################
-# functions
-def get_jwt(issue):
-    with open('descartes_app.pem', 'r') as _file:
+def request_token(installation):
+    token_response = requests.post(GITHUB_API + 'installation/{}/access_tokens'.format(installation),
+    headers = {
+        'Authorization': 'Bearer ' + get_jwt(),
+        'Accept': 'application/vnd.github.machine-man-preview+json'  
+    })
+    if token_response.status_code != 200:
+        raise Exception('Could not get the installation access token. Code: {}, response {}'.format(token_response.status_code, token_response.text))
+    return token_response['token']
+
+def get_jwt(app_id=APP_ID):
+    with open('private2.pem', 'r') as _file:
         key = RSA.importKey(_file.read())
-        jwtPayload = {'iat': time.time(), 'exp': time.time() + 600, 'iss': issue}
-        return jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm='RS256').decode('utf8')
+        jwtPayload = {'iat': time.time(), 'exp': time.time() + 300, 'iss': app_id}
+        return jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm='RS256').decode('ascii')
