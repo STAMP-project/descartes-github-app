@@ -166,6 +166,8 @@ def do_work(ch, method, properties, body):
     ch.basic_ack(delivery_tag = method.delivery_tag)
 
 def get_repo(cloneUrl, commitSha):
+    currentDir = os.getcwd()
+
     workingDir = 'descartesWorkingDir'
     command = 'git clone ' + cloneUrl  + ' ' + workingDir
     trace("get_repo: " + command)
@@ -184,6 +186,7 @@ def get_repo(cloneUrl, commitSha):
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
     stdoutData, stderrData = gitCheckout.communicate()
+    os.chdir(currentDir)
     if gitCheckout.returncode != 0:
         raise Exception('git checkout failed: ' + stdoutData)
 
