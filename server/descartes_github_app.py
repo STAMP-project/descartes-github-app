@@ -174,7 +174,7 @@ def get_repo(cloneUrl, commitSha):
         stderr = subprocess.STDOUT, shell = True)
     stdoutData, stderrData = gitClone.communicate()
     if gitClone.returncode != 0:
-        raise Exception('git clone failed: ' + stdoutData)
+        raise Exception('git clone failed: ' + stdoutData.decode())
 
     os.chdir(workingDir)
 
