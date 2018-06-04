@@ -20,7 +20,7 @@ GITHUB_API = 'https://api.github.com/'
 APP_ID = 12748
 CHECK_RUN_NAME = 'Looking for pseudo-tested methods'
 
-DEFAULT_QUEUE = 'executions'
+DEFAULT_QUEUE = 'descartes'
 
 ################################################################################
 # don't change the variable name 'application' otherwise uwsgi won't work anymore
@@ -51,10 +51,12 @@ def pullrequest_opened():
     create_work({'event': payload, 'check_run': information})
     return 'Everything went well :)'
 
+
 def dump(data, prefix='dump'):
     unique_filename = prefix + '_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '.json'
     with open(unique_filename, 'w') as _file:
         json.dump(data, _file)
+
 
 def start_check_run(installation, repo_url, params):
     token = request_token(installation)
@@ -87,8 +89,6 @@ def update_check_run(url, status, installation, conclusion=None, output=None):
     })
     if not success(response):
         raise Exception('Could not update the check run. Code {}. Response: {}'.format(response.status_code, response.text))
-
-
 
 
 def request_token(installation):
@@ -124,7 +124,7 @@ def create_work(data):
         body=json.dumps(data),
         properties=pika.BasicProperties(delivery_mode=2) # make message persistent
     ) 
-    print("######## sent: " + body)
+    trace("sent: " + json.dumps(data))
     connection.close()
 
 
@@ -132,12 +132,12 @@ def run_consumer():
     _, channel = connect_rabbitmq()
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(do_work, queue=DEFAULT_QUEUE)
-    print("######## waiting for messages")
+    trace("waiting for messages")
     channel.start_consuming()
 
 
 def do_work(ch, method, properties, body):
-    print("######## received: " + body.decode('ascii'))
+    trace("received: " + body.decode('ascii'))
 
     data = json.loads(body)
 
@@ -167,7 +167,7 @@ def do_work(ch, method, properties, body):
 def get_repo(cloneUrl, commitSha):
     workingDir = 'descartesWorkingDir'
     command = 'git clone ' + cloneUrl  + ' ' + workingDir
-    print("######## get_repo: " + command)
+    trace("get_repo: " + command)
     gitClone = subprocess.Popen(command,
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
@@ -178,10 +178,14 @@ def get_repo(cloneUrl, commitSha):
     os.chdir(workingDir)
 
     command = 'git checkout ' + commitSha
-    print("######## get_repo: " + command)
+    trace("get_repo: " + command)
     gitCheckout = subprocess.Popen(command,
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
     stdoutData, stderrData = gitCheckout.communicate()
     if gitCheckout.returncode != 0:
         raise Exception('git checkout failed: ' + stdoutData)
+
+
+def trace(message):
+    print("######## " + message, file=sys.stderr)
