@@ -150,7 +150,7 @@ def do_work(ch, method, properties, body):
     sha = data['event']['pull_request']['head']['sha']
 
     try:
-        get_repo(update_url, sha)
+        get_repo(url, sha)
     except Exception as exc:
         update_check_run(update_url, 'completed', installation, conclusion='failure',
             output={
