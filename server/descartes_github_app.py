@@ -81,7 +81,7 @@ def update_check_run(url, status, installation, conclusion=None, output=None):
     if conclusion:
         data['status'] = 'completed'
         data['conclusion'] = conclusion
-        data['completed_at'] = time.strftime('%Y-%m-%dT%H:%M:%S%Z')
+        data['completed_at'] = datetime.datetime.now().isoformat()#time.strftime('%Y-%m-%dT%H:%M:%S%Z')
     if output:
         data['output'] = output
     response = requests.patch(url, data=json.dumps(data), headers = {
