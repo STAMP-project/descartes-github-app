@@ -14,6 +14,7 @@ import sys
 import os
 import subprocess
 import pika
+import shutil
 
 ## Yet Another shallow comment
 
@@ -167,9 +168,9 @@ def do_work(ch, method, properties, body):
 
 def get_repo(cloneUrl, commitSha):
     currentDir = os.getcwd()
-    workingDir = os.path.join(currentDir, 'descartesWorkingDir')
+    workingDir = './descartesWorkingDir'
     if os.path.exists(workingDir):
-        os.rmdir(workingDir)
+        shutil.rmtree(workingDir)
     command = 'git clone ' + cloneUrl  + ' ' + workingDir
     trace("get_repo: " + command)
     gitClone = subprocess.Popen(command,
