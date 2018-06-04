@@ -124,6 +124,7 @@ def create_work(data):
         body=json.dumps(data),
         properties=pika.BasicProperties(delivery_mode=2) # make message persistent
     ) 
+    print("######## sent: " + body)
     connection.close()
 
 
@@ -131,10 +132,13 @@ def run_consumer():
     _, channel = connect_rabbitmq()
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(do_work, queue=DEFAULT_QUEUE)
+    print("######## waiting for messages")
     channel.start_consuming()
 
 
 def do_work(ch, method, properties, body):
+    print("######## received: " + body.decode('ascii'))
+
     data = json.loads(body)
 
     update_url = data['check_run']['url']
@@ -147,12 +151,14 @@ def do_work(ch, method, properties, body):
     try:
         get_repo(update_url, sha)
     except Exception as exc:
-        update_check_run(update_url, 'completed', installation, conclusion='failure', output={
-            'title': 'An exception was thrown',
-            'summary': str(exc)
+        update_check_run(update_url, 'completed', installation, conclusion='failure',
+            output={
+                'title': 'An exception was thrown',
+                'summary': str(exc)
         })
         return
-    update_check_run(update_url, 'completed', installation, conclusion='success', output={
+    update_check_run(update_url, 'completed', installation, conclusion='success',
+        output={
             'title': 'The respository was successfully cloned',
             'summary': 'Clone from {} at {}'.format(update_url, sha)
         })
@@ -161,6 +167,7 @@ def do_work(ch, method, properties, body):
 def get_repo(cloneUrl, commitSha):
     workingDir = 'descartesWorkingDir'
     command = 'git clone ' + cloneUrl  + ' ' + workingDir
+    print("######## get_repo: " + command)
     gitClone = subprocess.Popen(command,
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
@@ -171,6 +178,7 @@ def get_repo(cloneUrl, commitSha):
     os.chdir(workingDir)
 
     command = 'git checkout ' + commitSha
+    print("######## get_repo: " + command)
     gitCheckout = subprocess.Popen(command,
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)

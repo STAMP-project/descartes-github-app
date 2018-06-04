@@ -13,6 +13,7 @@ Steps:
 * Install nginx (sudo apt-get install nginx)
 * Install python3 (sudo apt-get install python3)
 * Install virtualenv (sudo pip install virtualenv)
+ virtualenv, requests, pycrypto, pyjwt, flask, uwsgi, ashes
 * Create the folder (virtualenv [FOLDER])
 * Enter into [FOLDER] and activate environment (cd [FOLDER]; source bin/activate)
 * Develop the app!
