@@ -140,7 +140,7 @@ def run_consumer():
 def do_work(ch, method, properties, body):
     trace("received: " + body.decode('ascii'))
 
-    data = json.loads(body)
+    data = json.loads(body.decode())
 
     update_url = data['check_run']['url']
     installation = data['event']['installation']['id']
