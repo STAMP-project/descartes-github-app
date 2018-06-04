@@ -1,2 +1,3 @@
 #!/bin/sh
-(source bin/activate; python workers.py)
+. bin/activate
+python workers.py
