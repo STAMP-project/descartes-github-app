@@ -167,8 +167,9 @@ def do_work(ch, method, properties, body):
 
 def get_repo(cloneUrl, commitSha):
     currentDir = os.getcwd()
-
-    workingDir = 'descartesWorkingDir'
+    workingDir = os.path.join(currentDir, 'descartesWorkingDir')
+    if os.path.exists(workingDir):
+        os.rmdir(workingDir)
     command = 'git clone ' + cloneUrl  + ' ' + workingDir
     trace("get_repo: " + command)
     gitClone = subprocess.Popen(command,
