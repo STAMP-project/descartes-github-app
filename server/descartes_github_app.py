@@ -126,7 +126,7 @@ def create_work(data):
         body=json.dumps(data),
         properties=pika.BasicProperties(delivery_mode=2) # make message persistent
     ) 
-    trace("sent: " + json.dumps(data))
+    trace("data sent")
     connection.close()
 
 
@@ -139,7 +139,7 @@ def run_consumer():
 
 
 def do_work(ch, method, properties, body):
-    trace("received: " + body.decode('ascii'))
+    trace("data received")
 
     data = json.loads(body.decode())
 
