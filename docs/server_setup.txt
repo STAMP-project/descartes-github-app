@@ -57,3 +57,29 @@ WantedBy=multi-user.target
 * sudo nginx -t
 * sudo systemctl restart nginx
 
+
+* using rabbitMQ between the service and the process than runs descartes
+Running the consumer (that runs Descartes) as a service with systemd
+* vi /etc/systemd/system/descartes_consumer_daemon.service
+[Unit]
+Description=Listens to RabbitMQ notifications and runs Descartes on a pull request.
+After=network.target
+
+[Service]
+Type=simple
+User=stamp
+WorkingDirectory=/home/stamp/descartes-github-app/
+ExecStart=/home/stamp/descartes-github-app/run-daemon.sh
+Restart=on-failure # or always, on-abort, etc
+
+[Install]
+WantedBy=multi-user.target
+
+* sudo systemctl start descartes_consumer_daemon.service
+
+* to test and debug the service:
+- sudo systemctl stop descartes_consumer_daemon.service
+- cd /home/stamp/descartes-github-app ; python workers.py
+
+* to check the rabbitMQ queues
+sudo rabbitmqctl list_queues

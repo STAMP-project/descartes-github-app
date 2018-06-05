@@ -3,13 +3,15 @@
 ################################################################################
 
 import pika
-
-DEFAULT_QUEUE = 'descartes'
-#DEFAULT_QUEUE = 'simple_tests'
-#DEFAULT_QUEUE = 'executions'
+import argparse
 
 ################################################################################
+myParser = argparse.ArgumentParser()
+myParser.add_argument('queue_name', nargs='1', \
+   help = 'Name of the rabbitMQ queue to remove; you can use: "sudo rabbitmqctl list_queues" to see the queues.')
+myArgs = myParser.parse_args()
+
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
 channel = connection.channel()
-channel.queue_delete(DEFAULT_QUEUE)
+channel.queue_delete(myArgs.queue_name)
 connection.close()
