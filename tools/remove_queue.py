@@ -7,7 +7,7 @@ import argparse
 
 ################################################################################
 myParser = argparse.ArgumentParser(description="Remove QUEUE_NAME from rabbitMG queues")
-myParser.add_argument('queue_name', nargs='?', type='string',
+myParser.add_argument('queue_name', 
    help = 'Name of the rabbitMQ queue to remove; you can use: "sudo rabbitmqctl list_queues" to see the queues.')
 myArgs = myParser.parse_args()
 
