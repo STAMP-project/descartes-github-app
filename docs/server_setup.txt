@@ -83,3 +83,5 @@ WantedBy=multi-user.target
 
 * to check the rabbitMQ queues
 sudo rabbitmqctl list_queues
+
+* to clean the queues

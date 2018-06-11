@@ -20,7 +20,8 @@ import shutil
 
 GITHUB_API = 'https://api.github.com/'
 APP_ID = 12748
-CHECK_RUN_NAME = 'Looking for pseudo-tested methods'
+CHECK_RUN_STEP_1_NAME = 'Getting repository'
+CHECK_RUN_STEP_2_NAME = 'Looking for pseudo-tested methods'
 
 DEFAULT_QUEUE = 'descartes'
 
@@ -39,11 +40,12 @@ def pullrequest_opened():
     dump(payload, 'pr')
     pull_request = payload['pull_request']
 
+    # move the start_check_run into consumer, i.e. ?
     information = start_check_run(
         payload['installation']['id'], 
         payload['repository']['url'], 
         {
-            'name': CHECK_RUN_NAME,
+            'name': CHECK_RUN_STEP_1_NAME,
             'status': 'queued',
             'head_branch': pull_request['head']['ref'],
             'head_sha': pull_request['head']['sha']
@@ -73,12 +75,12 @@ def start_check_run(installation, repo_url, params):
     return json.loads(response.text)
 
 
-def update_check_run(url, status, installation, conclusion=None, output=None):
+def update_check_run(url, status, installation, checkRunName, conclusion=None, output=None):
     '''
     url - Must contain the check_run id at the end
     '''
     token = request_token(installation)
-    data = {'name': CHECK_RUN_NAME, 'status': status}
+    data = {'name': ' + checkRunName,, 'status': status}
     if conclusion:
         data['status'] = 'completed'
         data['conclusion'] = conclusion
@@ -138,14 +140,14 @@ def run_consumer():
     channel.start_consuming()
 
 
-def do_work(ch, method, properties, body):
+def do_work(channel, method, properties, body):
     trace("data received")
 
     data = json.loads(body.decode())
 
     update_url = data['check_run']['url']
     installation = data['event']['installation']['id']
-    update_check_run(update_url, 'in_progress', installation)
+    update_check_run(update_url, 'in_progress', installation, CHECK_RUN_STEP_1_NAME)
 
     url = data['event']['repository']['clone_url']
     sha = data['event']['pull_request']['head']['sha']
@@ -153,18 +155,48 @@ def do_work(ch, method, properties, body):
     try:
         get_repo(url, sha)
     except Exception as exc:
-        update_check_run(update_url, 'completed', installation, conclusion='failure',
+        update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_1_NAME,
+            conclusion='failure',
             output={
-                'title': 'An exception was thrown',
+                'title': 'Cannot get the repositroy: an exception was thrown',
                 'summary': str(exc)
         })
         return
-    update_check_run(update_url, 'completed', installation, conclusion='success',
+    update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_1_NAME,
+        conclusion='success',
         output={
             'title': 'The respository was successfully cloned',
             'summary': 'Clone from {} at {}'.format(update_url, sha)
         })
-    ch.basic_ack(delivery_tag = method.delivery_tag)
+    # create another check_run to run descartes
+    information = start_check_run(
+        installation,
+        data['event']['repository']['url']
+        {
+            'name': CHECK_RUN_STEP_2_NAME,
+            'status': 'in_progress',
+            'head_branch': data['event']['pull_request']['head']['ref'],
+            'head_sha': data['event']['pull_request']['head']['sha']
+        })
+    try:
+        run_descartes()
+    except Exception as exc:
+        update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_2_NAME,
+            conclusion='failure',
+            output={
+                'title': 'Descartes failed: an exception was thrown',
+                'summary': str(exc)
+        })
+        return
+    # complete the result with annotations
+    update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_2_NAME,
+        conclusion='success',
+        output={
+            'title': 'Descartes completed',
+            'summary': 'The mutation score is: '
+        })
+    channel.basic_ack(delivery_tag = method.delivery_tag)
+
 
 def get_repo(cloneUrl, commitSha):
     currentDir = os.getcwd()
@@ -191,6 +223,29 @@ def get_repo(cloneUrl, commitSha):
     os.chdir(currentDir)
     if gitCheckout.returncode != 0:
         raise Exception('git checkout failed: ' + stdoutData)
+
+
+def run_descartes(cloneUrl, commitSha):
+    currentDir = os.getcwd()
+    workingDir = './descartesWorkingDir'
+    os.chdir(workingDir)
+    command = 'mvn install'
+    trace("run_descartes: " + command)
+    mvnInstall = subprocess.Popen(command,
+        stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+        stderr = subprocess.STDOUT, shell = True)
+    stdoutData, stderrData = gitClone.communicate()
+    if gitClone.returncode != 0:
+        raise Exception(command + ' failed: ' + stdoutData.decode())
+
+    command = 'mvn eu.stamp-project:pitmp-maven-plugin:descartes'
+    trace("run_descartes: " + command)
+    mvnInstall = subprocess.Popen(command,
+        stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+        stderr = subprocess.STDOUT, shell = True)
+    stdoutData, stderrData = gitClone.communicate()
+    if gitClone.returncode != 0:
+        raise Exception(command + ' failed: ' + stdoutData.decode())
 
 
 def trace(message):
