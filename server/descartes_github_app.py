@@ -162,6 +162,7 @@ def do_work(channel, method, properties, body):
                 'summary': str(exc)
         })
         return
+    trace("do_work: update_check_run " + CHECK_RUN_STEP_1_NAME)
     update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_1_NAME,
         conclusion='success',
         output={
@@ -169,6 +170,7 @@ def do_work(channel, method, properties, body):
             'summary': 'Clone from {} at {}'.format(update_url, sha)
         })
     # create another check_run to run descartes
+    trace("do_work: start_check_run " + CHECK_RUN_STEP_2_NAME)
     information = start_check_run(
         installation,
         data['event']['repository']['url'],
@@ -189,6 +191,7 @@ def do_work(channel, method, properties, body):
         })
         return
     # complete the result with annotations
+    trace("do_work: update_check_run " + CHECK_RUN_STEP_2_NAME)
     update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_2_NAME,
         conclusion='success',
         output={
