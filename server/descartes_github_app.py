@@ -171,7 +171,7 @@ def do_work(channel, method, properties, body):
     # create another check_run to run descartes
     information = start_check_run(
         installation,
-        data['event']['repository']['url']
+        data['event']['repository']['url'],
         {
             'name': CHECK_RUN_STEP_2_NAME,
             'status': 'in_progress',
