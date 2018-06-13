@@ -80,7 +80,7 @@ def update_check_run(url, status, installation, checkRunName, conclusion=None, o
     url - Must contain the check_run id at the end
     '''
     token = request_token(installation)
-    data = {'name': ' + checkRunName,, 'status': status}
+    data = {'name': checkRunName, 'status': status}
     if conclusion:
         data['status'] = 'completed'
         data['conclusion'] = conclusion
