@@ -247,6 +247,7 @@ def compile_project():
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
     stdoutData, stderrData = mvnInstall.communicate()
+    os.chdir(currentDir)
     if mvnInstall.returncode != 0:
         raise Exception(command + ' failed: ' + stdoutData.decode())
 
@@ -262,6 +263,7 @@ def run_descartes():
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
     stdoutData, stderrData = mvnPmp.communicate()
+    os.chdir(currentDir)
     if mvnPmp.returncode != 0:
         raise Exception(command + ' failed: ' + stdoutData.decode())
 
