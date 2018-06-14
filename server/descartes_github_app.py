@@ -246,8 +246,8 @@ def compile_project():
     mvnInstall = subprocess.Popen(command,
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
-    stdoutData, stderrData = gitClone.communicate()
-    if gitClone.returncode != 0:
+    stdoutData, stderrData = mvnInstall.communicate()
+    if mvnInstall.returncode != 0:
         raise Exception(command + ' failed: ' + stdoutData.decode())
 
 
@@ -258,11 +258,11 @@ def run_descartes():
 
     command = 'mvn eu.stamp-project:pitmp-maven-plugin:descartes'
     trace("run_descartes: " + command)
-    mvnInstall = subprocess.Popen(command,
+    mvnPmp = subprocess.Popen(command,
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
-    stdoutData, stderrData = gitClone.communicate()
-    if gitClone.returncode != 0:
+    stdoutData, stderrData = mvnPmp.communicate()
+    if mvnPmp.returncode != 0:
         raise Exception(command + ' failed: ' + stdoutData.decode())
 
 
