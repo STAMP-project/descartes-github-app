@@ -41,18 +41,19 @@ def pullrequest_opened():
     pull_request = payload['pull_request']
 
     # move the start_check_run into consumer, i.e. ?
-    information = start_check_run(
-        payload['installation']['id'], 
-        payload['repository']['url'], 
-        {
-            'name': CHECK_RUN_STEP_1_NAME,
-            'status': 'queued',
-            'head_branch': pull_request['head']['ref'],
-            'head_sha': pull_request['head']['sha']
-        })
+    #information = start_check_run(
+    #    payload['installation']['id'], 
+    #    payload['repository']['url'], 
+    #    {
+    #        'name': CHECK_RUN_STEP_1_NAME,
+    #        'status': 'queued',
+    #        'head_branch': pull_request['head']['ref'],
+    #        'head_sha': pull_request['head']['sha']
+    #    })
 
-    dump(information, 'information')
-    create_work({'event': payload, 'check_run': information})
+    #dump(information, 'information')
+    #create_work({'event': payload, 'check_run': information})
+    create_work({'event': payload})
     return 'Everything went well :)'
 
 
@@ -147,8 +148,21 @@ def do_work(channel, method, properties, body):
 
     data = json.loads(body.decode())
 
-    update_url = data['check_run']['url']
     installation = data['event']['installation']['id']
+    pull_request = data['event']['pull_request']
+
+    # first check run: getting repo
+    information = start_check_run(
+        installation, 
+        data['event']['repository']['url'], 
+        {
+            'name': CHECK_RUN_STEP_1_NAME,
+            'status': 'queued',
+            'head_branch': pull_request['head']['ref'],
+            'head_sha': pull_request['head']['sha']
+        })
+
+    update_url = information['url']
     update_check_run(update_url, 'in_progress', installation, CHECK_RUN_STEP_1_NAME)
 
     url = data['event']['repository']['clone_url']
