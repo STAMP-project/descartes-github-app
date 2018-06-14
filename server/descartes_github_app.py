@@ -162,7 +162,7 @@ def do_work(channel, method, properties, body):
     jobToRun = 'run_descartes()'
     successMessage = 'Descartes completed',
     successSummary = 'See details for Descartes findings'
-    errorMessage = 'Descartes failed: an exception was thrown',
+    errorMessage = 'Descartes failed: an exception was thrown'
     run_job(data, CHECK_RUN_STEP_3_NAME, jobToRun, successMessage, successSummary,
         errorMessage, globals(), locals())
 
