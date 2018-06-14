@@ -21,7 +21,8 @@ import shutil
 GITHUB_API = 'https://api.github.com/'
 APP_ID = 12748
 CHECK_RUN_STEP_1_NAME = 'Getting repository'
-CHECK_RUN_STEP_2_NAME = 'Looking for pseudo-tested methods'
+CHECK_RUN_STEP_2_NAME = 'Compiling project'
+CHECK_RUN_STEP_3_NAME = 'Looking for pseudo-tested methods'
 
 DEFAULT_QUEUE = 'descartes'
 
@@ -40,19 +41,6 @@ def pullrequest_opened():
     dump(payload, 'pr')
     pull_request = payload['pull_request']
 
-    # move the start_check_run into consumer, i.e. ?
-    #information = start_check_run(
-    #    payload['installation']['id'], 
-    #    payload['repository']['url'], 
-    #    {
-    #        'name': CHECK_RUN_STEP_1_NAME,
-    #        'status': 'queued',
-    #        'head_branch': pull_request['head']['ref'],
-    #        'head_sha': pull_request['head']['sha']
-    #    })
-
-    #dump(information, 'information')
-    #create_work({'event': payload, 'check_run': information})
     create_work({'event': payload})
     return 'Everything went well :)'
 
@@ -148,6 +136,36 @@ def do_work(channel, method, properties, body):
 
     data = json.loads(body.decode())
 
+    sha = data['event']['pull_request']['head']['sha']
+    url = data['event']['repository']['clone_url']
+
+    jobToRun = 'get_repo(url, sha)'
+    successMessage = 'The respository was successfully cloned'
+    successSummary = 'Clone from {} at {}'.format(url, sha)
+    errorMessage = 'Cannot get the repositroy: an exception was thrown'
+    run_job(data, CHECK_RUN_STEP_1_NAME, jobToRun, successMessage, successSummary,
+        errorMessage, globals(), locals())
+
+    # create another check_run to compile
+    jobToRun = 'compile_project()'
+    successMessage = 'Project compiled'
+    errorMessage = 'Cannot compile the project: an exception was thrown'
+    run_job(data, CHECK_RUN_STEP_2_NAME, jobToRun, successMessage, successSummary,
+        errorMessage, globals(), locals())
+
+    # create another check_run to run descartes
+    jobToRun = 'run_descartes()'
+    successMessage = 'Descartes completed',
+    successSummary = 'See details for Descartes findings'
+    errorMessage = 'Descartes failed: an exception was thrown',
+    run_job(data, CHECK_RUN_STEP_3_NAME, jobToRun, successMessage, successSummary,
+        errorMessage, globals(), locals())
+
+    channel.basic_ack(delivery_tag = method.delivery_tag)
+
+
+def run_job(data, checkRunName, jobToRun, successMessage, successSummary, errorMessage,
+        globalDict, localDict):
     installation = data['event']['installation']['id']
     pull_request = data['event']['pull_request']
 
@@ -156,66 +174,35 @@ def do_work(channel, method, properties, body):
         installation, 
         data['event']['repository']['url'], 
         {
-            'name': CHECK_RUN_STEP_1_NAME,
+            'name': checkRunName,
             'status': 'queued',
             'head_branch': pull_request['head']['ref'],
             'head_sha': pull_request['head']['sha']
         })
 
     update_url = information['url']
-    update_check_run(update_url, 'in_progress', installation, CHECK_RUN_STEP_1_NAME)
+    update_check_run(update_url, 'in_progress', installation, checkRunName)
 
     url = data['event']['repository']['clone_url']
     sha = data['event']['pull_request']['head']['sha']
 
     try:
-        get_repo(url, sha)
+        eval(jobToRun, globalDict, localDict)
     except Exception as exc:
-        update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_1_NAME,
+        update_check_run(update_url, 'completed', installation, checkRunName,
             conclusion='failure',
             output={
-                'title': 'Cannot get the repositroy: an exception was thrown',
+                'title': errorMessage,
                 'summary': str(exc)
         })
         return
-    trace("do_work: update_check_run " + CHECK_RUN_STEP_1_NAME)
-    update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_1_NAME,
+    trace("do_work: update_check_run " + checkRunName)
+    update_check_run(update_url, 'completed', installation, checkRunName,
         conclusion='success',
         output={
-            'title': 'The respository was successfully cloned',
-            'summary': 'Clone from {} at {}'.format(update_url, sha)
+            'title': successMessage,
+            'summary': successSummary
         })
-    # create another check_run to run descartes
-    trace("do_work: start_check_run " + CHECK_RUN_STEP_2_NAME)
-    information = start_check_run(
-        installation,
-        data['event']['repository']['url'],
-        {
-            'name': CHECK_RUN_STEP_2_NAME,
-            'status': 'in_progress',
-            'head_branch': data['event']['pull_request']['head']['ref'],
-            'head_sha': data['event']['pull_request']['head']['sha']
-        })
-    update_url = information['url']
-    try:
-        run_descartes()
-    except Exception as exc:
-        update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_2_NAME,
-            conclusion='failure',
-            output={
-                'title': 'Descartes failed: an exception was thrown',
-                'summary': str(exc)
-        })
-        return
-    # complete the result with annotations
-    trace("do_work: update_check_run " + CHECK_RUN_STEP_2_NAME)
-    update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_2_NAME,
-        conclusion='success',
-        output={
-            'title': 'Descartes completed',
-            'summary': 'The mutation score is: '
-        })
-    channel.basic_ack(delivery_tag = method.delivery_tag)
 
 
 def get_repo(cloneUrl, commitSha):
@@ -245,18 +232,24 @@ def get_repo(cloneUrl, commitSha):
         raise Exception('git checkout failed: ' + stdoutData)
 
 
-def run_descartes(cloneUrl, commitSha):
+def compile_project():
     currentDir = os.getcwd()
     workingDir = './descartesWorkingDir'
     os.chdir(workingDir)
     command = 'mvn install'
-    trace("run_descartes: " + command)
+    trace("compile_project: " + command)
     mvnInstall = subprocess.Popen(command,
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
     stdoutData, stderrData = gitClone.communicate()
     if gitClone.returncode != 0:
         raise Exception(command + ' failed: ' + stdoutData.decode())
+
+
+def run_descartes():
+    currentDir = os.getcwd()
+    workingDir = './descartesWorkingDir'
+    os.chdir(workingDir)
 
     command = 'mvn eu.stamp-project:pitmp-maven-plugin:descartes'
     trace("run_descartes: " + command)
