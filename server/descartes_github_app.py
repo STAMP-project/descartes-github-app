@@ -172,34 +172,34 @@ def do_work(channel, method, properties, body):
             'summary': 'Clone from {} at {}'.format(update_url, sha)
         })
     # create another check_run to run descartes
-    trace("do_work: start_check_run " + CHECK_RUN_STEP_2_NAME)
-    information = start_check_run(
-        installation,
-        data['event']['repository']['url'],
-        {
-            'name': CHECK_RUN_STEP_2_NAME,
-            'status': 'in_progress',
-            'head_branch': data['event']['pull_request']['head']['ref'],
-            'head_sha': data['event']['pull_request']['head']['sha']
-        })
-    try:
-        run_descartes()
-    except Exception as exc:
-        update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_2_NAME,
-            conclusion='failure',
-            output={
-                'title': 'Descartes failed: an exception was thrown',
-                'summary': str(exc)
-        })
-        return
-    # complete the result with annotations
-    trace("do_work: update_check_run " + CHECK_RUN_STEP_2_NAME)
-    update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_2_NAME,
-        conclusion='success',
-        output={
-            'title': 'Descartes completed',
-            'summary': 'The mutation score is: '
-        })
+    #trace("do_work: start_check_run " + CHECK_RUN_STEP_2_NAME)
+    #information = start_check_run(
+    #    installation,
+    #    data['event']['repository']['url'],
+    #    {
+    #        'name': CHECK_RUN_STEP_2_NAME,
+    #        'status': 'in_progress',
+    #        'head_branch': data['event']['pull_request']['head']['ref'],
+    #        'head_sha': data['event']['pull_request']['head']['sha']
+    #    })
+    #try:
+    #    run_descartes()
+    #except Exception as exc:
+    #    update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_2_NAME,
+    #        conclusion='failure',
+    #        output={
+    #            'title': 'Descartes failed: an exception was thrown',
+    #            'summary': str(exc)
+    #    })
+    #    return
+    ## complete the result with annotations
+    #trace("do_work: update_check_run " + CHECK_RUN_STEP_2_NAME)
+    #update_check_run(update_url, 'completed', installation, CHECK_RUN_STEP_2_NAME,
+    #    conclusion='success',
+    #    output={
+    #        'title': 'Descartes completed',
+    #        'summary': 'The mutation score is: '
+    #    })
     channel.basic_ack(delivery_tag = method.delivery_tag)
 
 
