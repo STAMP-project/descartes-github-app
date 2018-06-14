@@ -96,11 +96,16 @@ def request_token(installation):
         raise Exception('Could not get the installation access token. Code: {}, response {}'.format(token_response.status_code, token_response.text))
     return json.loads(token_response.text)['token']
 
+
 def success(response):
     return 200 <= response.status_code < 300
 
+
 def get_jwt(app_id=APP_ID):
-    with open('descartes_app.pem', 'r') as _file:
+    pemFile = 'descartes_app.pem'
+    if os.path.exists(os.path.join('..', pemFile):
+        pemFile = os.path.join('..', pemFile)
+    with open(pemFile, 'r') as _file:
         key = RSA.importKey(_file.read())
         jwtPayload = {'iat': time.time(), 'exp': time.time() + 300, 'iss': app_id}
         return jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm='RS256').decode('ascii')
