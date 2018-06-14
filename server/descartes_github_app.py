@@ -70,6 +70,7 @@ def start_check_run(installation, repo_url, params):
                 'Authorization': 'token ' + token,  
                 'Accept': 'application/vnd.github.antiope-preview+json',
             })
+    trace("start_check_run")
     if not success(response):
         raise Exception('Could not create the check run. Code {}. Response: {}'.format(response.status_code, response.text))
     return json.loads(response.text)
@@ -91,6 +92,7 @@ def update_check_run(url, status, installation, checkRunName, conclusion=None, o
         'Authorization': 'token ' + token,  
         'Accept': 'application/vnd.github.antiope-preview+json',
     })
+    trace("update_check_run: " + checkRunName)
     if not success(response):
         raise Exception('Could not update the check run. Code {}. Response: {}'.format(response.status_code, response.text))
 
