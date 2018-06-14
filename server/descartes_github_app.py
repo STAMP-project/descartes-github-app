@@ -103,7 +103,7 @@ def success(response):
 
 def get_jwt(app_id=APP_ID):
     pemFile = 'descartes_app.pem'
-    if os.path.exists(os.path.join('..', pemFile):
+    if os.path.exists(os.path.join('..', pemFile)):
         pemFile = os.path.join('..', pemFile)
     with open(pemFile, 'r') as _file:
         key = RSA.importKey(_file.read())
