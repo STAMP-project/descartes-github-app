@@ -212,8 +212,8 @@ class Project:
     def __init__(self, payload):
         self.payload = payload
         self.workingDir = os.path.join('.', 'descartesWorkingDir')
-        self.annotationFileName = os.path.join(self.project.workingDir,
-                'target', 'pit-reports', methods.json)
+        self.annotationFileName = os.path.join(self.workingDir,
+                'target', 'pit-reports', 'methods.json')
 
 
     def callMethod(self, methodName):
