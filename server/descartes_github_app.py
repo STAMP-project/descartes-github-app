@@ -121,7 +121,7 @@ class Consumer(Channel):
         jobToRun = Job(CHECK_RUN_STEP_1_NAME, payload, myProject, myApp,
             'getRepo()',
             'The respository was successfully cloned',
-            'Clone from {} at {}'.format(clone_url, sha),
+            'Clone from {} at {}'.format(payload.clone_url, payload.head_sha),
             'Cannot get the repositroy: an exception was thrown')
         jobToRun.run(globals(), locals())
     
@@ -129,7 +129,7 @@ class Consumer(Channel):
         jobToRun = Job(CHECK_RUN_STEP_2_NAME, payload, myProject, myApp,
             'compileProject()',
             'Project compiled',
-            'Clone from {} at {}'.format(clone_url, sha),
+            'Clone from {} at {}'.format(payload.clone_url, payload.head_sha),
             'Cannot compile the project: an exception was thrown')
         jobToRun.run(globals(), locals())
     
