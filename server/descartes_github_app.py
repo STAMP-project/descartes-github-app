@@ -147,7 +147,7 @@ class Consumer(Channel):
 ################################################################################
 class Payload:
 
-    def __init(self, jsonPayload):
+    def __init__(self, jsonPayload):
         data = jsonPayload
 
 
@@ -299,7 +299,7 @@ class Job:
 ################################################################################
 class CheckRun:
 
-    def __init(self, name, payload, gitHubApp):
+    def __init__(self, name, payload, gitHubApp):
         self.name = name
         self.payload = payload
         self.gitHubApp = gitHubApp
