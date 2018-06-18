@@ -123,7 +123,7 @@ class Consumer(Channel):
             'getRepo',
             'The respository was successfully cloned',
             'Clone from {} at {}'.format(payload.clone_url, payload.head_sha),
-            'Cannot get the repositroy: an exception was thrown')
+            'Cannot get the repository: an exception was thrown')
         jobToRun.run()
 
         # create another check_run to compile
