@@ -16,6 +16,8 @@ import subprocess
 import pika
 import shutil
 
+from reporting import generate_annotations
+
 GITHUB_API = 'https://api.github.com/'
 APP_ID = 12748
 CHECK_RUN_STEP_1_NAME = 'Getting repository'
