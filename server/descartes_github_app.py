@@ -16,6 +16,8 @@ import subprocess
 import pika
 import shutil
 
+from reporting import generate_annotations
+
 ## Yet Another shallow comment
 
 GITHUB_API = 'https://api.github.com/'
@@ -192,6 +194,45 @@ def get_repo(cloneUrl, commitSha):
     if gitCheckout.returncode != 0:
         raise Exception('git checkout failed: ' + stdoutData)
 
+def execute(command):
+    currentDir = os.getcwd()
+    workingDir = './descartesWorkingDir'
+    process = subprocess.Popen(command,
+                            stdin = subprocess.PIPE, 
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.STDOUT,
+                            shell = True)
+    stdout, stderr = gitCheckout.communicate()
+    os.chdir(currentDir)
+    return process.returncode == 0, process.returncode, stdout, stderr
+
+
+def install_and_mutate():
+    trace('Installing Maven project')
+    success, _, _, _ = execute('mvn clean install')
+    if not success:
+        raise Exception('Failed to install the given Maven project')
+    
+    trace('Running PITest')
+    success, _, _, _ = execute('mvn eu.stamp-project:pitmp:run') #TODO: Parameters to set the path of the report
+    if not success:
+        raise Exception('Mutation analysis failed')
+    
+def get_conclusion(blob_href):
+    #TODO: Find the right file:
+    #TODO: Check if the file exists
+    with open('./descartesWorkingDir/target/methods.json') as _file:
+        data = json.load(_file)
+    annotations = generate_annotations(data['methods'], blob_href)
+    if not annotations:
+        return 'success', { 'title': 'No testing issues found', 'summary': 'Descartes could not find any testing issues.' }
+    methods_with_issues = len(annotations)
+    message = 'one method' if methods_with_issues == 1 else '{} methods'.format(methods_with_issues)
+    return 'failure', { 
+        'title': 'Some testing issues were found', 
+        'summary': 'Descartes found ' + message + ' with testing issues.',
+        'annotations': annotations
+    }
 
 def trace(message):
     print("######## " + message, file=sys.stderr)
