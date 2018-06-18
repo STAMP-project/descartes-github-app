@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 ################################################################################
 
-from descartes_github_app import run_consumer
+from descartes_github_app import Consumer
 
 if __name__ == '__main__':
-    run_consumer()
+    consumer = Consumer()
+    consumer.run()
