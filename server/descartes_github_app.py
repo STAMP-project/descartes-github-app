@@ -327,7 +327,7 @@ class CheckRun:
         url - Must contain the check_run id at the end
         '''
         token = self.gitHubApp.requestToken()
-        data = {'name': checkRunName, 'status': status}
+        data = {'name': self.name, 'status': status}
         if conclusion:
             data['status'] = 'completed'
             data['conclusion'] = conclusion
@@ -339,6 +339,6 @@ class CheckRun:
                 'Authorization': 'token ' + token,  
                 'Accept': 'application/vnd.github.antiope-preview+json',
             })
-        trace("CheckRun.update: " + checkRunName)
+        trace("CheckRun.update: " + self.name)
         if not success(response):
             raise Exception('Could not update the check run. Code {}. Response: {}'.format(response.status_code, response.text))
