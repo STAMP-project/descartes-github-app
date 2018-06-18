@@ -104,12 +104,12 @@ class Consumer(Channel):
         _, channel = self.connectRabbitmq()
         channel.basic_qos(prefetch_count = 1)
         channel.basic_consume(Consumer.doWorkCallback, queue = DEFAULT_QUEUE)
-        trace("waiting for messages")
+        trace("Consumer.run: waiting for messages")
         channel.start_consuming()
     
     
     def doWork(self, channel, method, properties, body):
-        trace("data received")
+        trace("Consumer.doWork: data received")
     
         data = json.loads(body.decode())
         payload = Payload(data['event'])
@@ -280,6 +280,7 @@ class Job:
 
 
     def run(self, globalDict, localDict):
+        trace('Job.run: ' + self.name)
         checkRun = CheckRun(self.name, self.payload, self.gitHubApp)
         checkRun.start()
         checkRun.update('in_progress')
@@ -288,8 +289,10 @@ class Job:
             trace('self.project.' + self.command)
             eval('self.project.' + self.command, globalDict, localDict)
         except Exception as exc:
+            trace('Job.run: ' + self.name + ': failed')
             checkRun.update('completed', 'failure', self.errorMessage, str(exc))
             return
+        trace('Job.run: ' + self.name + ': succeeded')
         checkRun.update('completed', 'success', self.successMessage,
             self.successSummary)
 
@@ -305,6 +308,7 @@ class CheckRun:
 
 
     def start(self):
+        trace('CheckRun.start: ' + self.name)
         params = {'name': self.name, 'status': 'queued',
                 'head_branch': self.payload.head_ref,
                 'head_sha': self.payload.head_sha}
@@ -316,7 +320,6 @@ class CheckRun:
                     'Authorization': 'token ' + token,  
                     'Accept': 'application/vnd.github.antiope-preview+json',
                 })
-        trace("start_check_run")
         if not success(response):
             raise Exception('Could not create the check run. Code {}. Response: {}'.format(response.status_code, response.text))
         self.checkRunInfo = json.loads(response.text)
@@ -326,9 +329,11 @@ class CheckRun:
         '''
         url - Must contain the check_run id at the end
         '''
+        trace('CheckRun.update: ' + self.name + ": " + status)
         token = self.gitHubApp.requestToken()
         data = {'name': self.name, 'status': status}
         if conclusion:
+            trace('CheckRun.update: ' + self.name + ": " + conclusion)
             data['status'] = 'completed'
             data['conclusion'] = conclusion
             data['completed_at'] = time.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -339,6 +344,7 @@ class CheckRun:
                 'Authorization': 'token ' + token,  
                 'Accept': 'application/vnd.github.antiope-preview+json',
             })
-        trace("CheckRun.update: " + self.name)
         if not success(response):
+            trace("CheckRun.update: " + self.name + ": failed")
             raise Exception('Could not update the check run. Code {}. Response: {}'.format(response.status_code, response.text))
+        trace("CheckRun.update: " + self.name + ": suceeded")
