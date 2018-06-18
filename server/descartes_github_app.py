@@ -66,21 +66,21 @@ class Payload:
         data = jsonPayload
 
 
-   def __getattr__(self, name):
-      if name == 'pull_request':
-          return(self.data['pull_request'])
-      elif name == 'head_sha':
-          return(self.data['pull_request']['head']['sha'])
-      elif name == 'head_ref':
-          return(self.data['pull_request']['head']['ref'])
-      elif name == 'installation':
-          return(self.data['installation']['id'])
-      elif name == 'clone_url':
-          return(self.data['repository']['clone_url'])
-      elif name == 'repo_url':
-          return(self.data['repository']['url'])
-      raise AttributeError(name)
-      return(None)
+    def __getattr__(self, name):
+        if name == 'pull_request':
+            return(self.data['pull_request'])
+        elif name == 'head_sha':
+            return(self.data['pull_request']['head']['sha'])
+        elif name == 'head_ref':
+            return(self.data['pull_request']['head']['ref'])
+        elif name == 'installation':
+            return(self.data['installation']['id'])
+        elif name == 'clone_url':
+            return(self.data['repository']['clone_url'])
+        elif name == 'repo_url':
+            return(self.data['repository']['url'])
+        raise AttributeError(name)
+        return(None)
 
 
     def isPullRequest(self):
