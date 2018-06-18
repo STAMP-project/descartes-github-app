@@ -211,7 +211,9 @@ class Project:
 
     def __init__(self, payload):
         self.payload = payload
-        self.workingDir = './descartesWorkingDir'
+        self.workingDir = os.path.join('.', 'descartesWorkingDir')
+        self.annotationFileName = os.path.join(self.project.workingDir,
+                'target', 'pit-reports', methods.json)
 
 
     def callMethod(self, methodName):
@@ -266,7 +268,7 @@ class Project:
         currentDir = os.getcwd()
         os.chdir(self.workingDir)
 
-        command = 'mvn eu.stamp-project:pitmp-maven-plugin:descartes'
+        command = 'mvn eu.stamp-project:pitmp-maven-plugin:descartes -DoutputFormats=METHODS -DtimestampedReports=false'
         trace("runDescartes: " + command)
         mvnPmp = subprocess.Popen(command,
             stdin = subprocess.PIPE, stdout = subprocess.PIPE,
@@ -307,7 +309,7 @@ class Job:
             return
         trace('Job.run: ' + self.name + ': OK')
         checkRun.update('completed', 'success', self.successMessage,
-            self.successSummary)
+            self.successSummary, self.project.annotationFileName)
 
 
 ################################################################################
@@ -338,7 +340,8 @@ class CheckRun:
         self.checkRunInfo = json.loads(response.text)
 
 
-    def update(self, status, conclusion = None, message = None, summary = ''):
+    def update(self, status, conclusion = None, message = None, summary = '',
+            annotationFileName = None):
         '''
         url - Must contain the check_run id at the end
         '''
@@ -350,6 +353,9 @@ class CheckRun:
             data['status'] = 'completed'
             data['conclusion'] = conclusion
             data['completed_at'] = time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            if annotationFileName and os.path.exists(annotationFileName):
+                # generate_annotations
+                trace('CheckRun.update: file exists: ' + annotationFileName)
         if message:
             data['output'] = {'title': message, 'summary': summary }
         response = requests.patch(self.checkRunInfo['url'], data = json.dumps(data),
