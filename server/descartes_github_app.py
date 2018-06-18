@@ -52,8 +52,8 @@ def pullrequest_opened():
 def success(response):
     # need to be improved
     return(200 <= response.status_code < 300)
-    
-    
+
+
 def dump(data, prefix = 'dump'):
     unique_filename = prefix + '_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '.json'
     with open(unique_filename, 'w') as _file:
@@ -79,11 +79,11 @@ class Channel:
 class Producer(Channel):
 
     def createWork(self, payload):
-        connection, channel = self.connectRabbitmq()    
-        channel.basic_publish(exchange = '', routing_key = DEFAULT_QUEUE, 
+        connection, channel = self.connectRabbitmq()
+        channel.basic_publish(exchange = '', routing_key = DEFAULT_QUEUE,
             body = json.dumps({'event': payload.data}),
             # make message persistent
-            properties = pika.BasicProperties(delivery_mode = 2)) 
+            properties = pika.BasicProperties(delivery_mode = 2))
         trace("data sent")
         connection.close()
 
@@ -106,41 +106,44 @@ class Consumer(Channel):
         channel.basic_consume(Consumer.doWorkCallback, queue = DEFAULT_QUEUE)
         trace("Consumer.run: waiting for messages")
         channel.start_consuming()
-    
-    
+
+
     def doWork(self, channel, method, properties, body):
         trace("Consumer.doWork: data received")
-    
+
         data = json.loads(body.decode())
         payload = Payload(data['event'])
-    
+
         myProject = Project(payload)
         myApp = GitHubApp(payload.installation)
 
         # first check_run to get the repo
+        trace("")
         jobToRun = Job(CHECK_RUN_STEP_1_NAME, payload, myProject, myApp,
-            'getRepo()',
+            'getRepo',
             'The respository was successfully cloned',
             'Clone from {} at {}'.format(payload.clone_url, payload.head_sha),
             'Cannot get the repositroy: an exception was thrown')
-        jobToRun.run(globals(), locals())
-    
+        jobToRun.run()
+
         # create another check_run to compile
+        trace("")
         jobToRun = Job(CHECK_RUN_STEP_2_NAME, payload, myProject, myApp,
-            'compileProject()',
+            'compileProject',
             'Project compiled',
             'Clone from {} at {}'.format(payload.clone_url, payload.head_sha),
             'Cannot compile the project: an exception was thrown')
-        jobToRun.run(globals(), locals())
-    
+        jobToRun.run()
+
         # create another check_run to run descartes
+        trace("")
         jobToRun = Job(CHECK_RUN_STEP_3_NAME, payload, myProject, myApp,
-            'runDescartes()',
+            'runDescartes',
             'Descartes completed',
             'See details for Descartes findings',
             'Descartes failed: an exception was thrown')
-        jobToRun.run(globals(), locals())
-    
+        jobToRun.run()
+
         channel.basic_ack(delivery_tag = method.delivery_tag)
 
 
@@ -185,13 +188,13 @@ class GitHubApp:
         token_response = requests.post(GITHUB_API + 'installations/{}/access_tokens'.format(self.installation),
         headers = {
             'Authorization': 'Bearer ' + self.getJwt(),
-            'Accept': 'application/vnd.github.machine-man-preview+json'  
+            'Accept': 'application/vnd.github.machine-man-preview+json'
         })
         if not success(token_response):
             raise Exception('Could not get the installation access token. Code: {}, response {}'.format(token_response.status_code, token_response.text))
         return(json.loads(token_response.text)['token'])
-    
-    
+
+
     def getJwt(self, app_id = APP_ID):
         pemFile = self.privateKeyFile
         if os.path.exists(os.path.join('..', pemFile)):
@@ -210,6 +213,7 @@ class Project:
         self.workingDir = './descartesWorkingDir'
 
     def getRepo(self):
+        trace('Project.getRepo IN')
         currentDir = os.getcwd()
         if os.path.exists(self.workingDir):
             shutil.rmtree(self.workingDir)
@@ -221,9 +225,9 @@ class Project:
         stdoutData, stderrData = gitClone.communicate()
         if gitClone.returncode != 0:
             raise Exception('git clone failed: ' + stdoutData.decode())
-    
+
         os.chdir(self.workingDir)
-    
+
         command = 'git checkout ' + self.payload.head_sha
         trace("getRepo: " + command)
         gitCheckout = subprocess.Popen(command,
@@ -233,9 +237,10 @@ class Project:
         os.chdir(currentDir)
         if gitCheckout.returncode != 0:
             raise Exception('git checkout failed: ' + stdoutData)
-    
-    
+
+
     def compileProject(self):
+        trace('Project.compileProject IN')
         currentDir = os.getcwd()
         os.chdir(self.workingDir)
         command = 'mvn install'
@@ -247,12 +252,13 @@ class Project:
         os.chdir(currentDir)
         if mvnInstall.returncode != 0:
             raise Exception(command + ' failed: ' + stdoutData.decode())
-    
-    
+
+
     def runDescartes(self):
+        trace('Project.runDescartes IN')
         currentDir = os.getcwd()
         os.chdir(self.workingDir)
-    
+
         command = 'mvn eu.stamp-project:pitmp-maven-plugin:descartes'
         trace("runDescartes: " + command)
         mvnPmp = subprocess.Popen(command,
@@ -279,20 +285,21 @@ class Job:
         self.errorMessage = errorMessage
 
 
-    def run(self, globalDict, localDict):
-        trace('Job.run: ' + self.name)
+    def run(self):
+        trace('Job.run IN: ' + self.name)
         checkRun = CheckRun(self.name, self.payload, self.gitHubApp)
         checkRun.start()
         checkRun.update('in_progress')
-    
+
         try:
-            trace('self.project.' + self.command)
-            eval('self.project.' + self.command, globalDict, localDict)
+            trace(self.command)
+            methodToCall = getattr(self, self.command)
+            methodToCall()
         except Exception as exc:
-            trace('Job.run: ' + self.name + ': failed')
+            trace('Job.run: ' + self.name + ': FAILED')
             checkRun.update('completed', 'failure', self.errorMessage, str(exc))
             return
-        trace('Job.run: ' + self.name + ': succeeded')
+        trace('Job.run: ' + self.name + ': OK')
         checkRun.update('completed', 'success', self.successMessage,
             self.successSummary)
 
@@ -314,17 +321,17 @@ class CheckRun:
                 'head_sha': self.payload.head_sha}
 
         token = self.gitHubApp.requestToken()
-        response = requests.post(self.payload.repo_url + '/check-runs', 
+        response = requests.post(self.payload.repo_url + '/check-runs',
                 data = json.dumps(params),
                 headers = {
-                    'Authorization': 'token ' + token,  
+                    'Authorization': 'token ' + token,
                     'Accept': 'application/vnd.github.antiope-preview+json',
                 })
         if not success(response):
             raise Exception('Could not create the check run. Code {}. Response: {}'.format(response.status_code, response.text))
         self.checkRunInfo = json.loads(response.text)
-    
-    
+
+
     def update(self, status, conclusion = None, message = None, summary = ''):
         '''
         url - Must contain the check_run id at the end
@@ -341,10 +348,8 @@ class CheckRun:
             data['output'] = {'title': message, 'summary': summary }
         response = requests.patch(self.checkRunInfo['url'], data = json.dumps(data),
             headers = {
-                'Authorization': 'token ' + token,  
+                'Authorization': 'token ' + token,
                 'Accept': 'application/vnd.github.antiope-preview+json',
             })
         if not success(response):
-            trace("CheckRun.update: " + self.name + ": failed")
             raise Exception('Could not update the check run. Code {}. Response: {}'.format(response.status_code, response.text))
-        trace("CheckRun.update: " + self.name + ": suceeded")
