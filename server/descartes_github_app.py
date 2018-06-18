@@ -293,7 +293,7 @@ class Job:
 
         try:
             trace(self.command)
-            methodToCall = self.project.getattr(self, self.command)
+            methodToCall = getattr(self.project, self.command)
             self.project.methodToCall()
         except Exception as exc:
             trace('Job.run: ' + self.name + ': FAILED')
