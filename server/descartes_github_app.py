@@ -212,6 +212,12 @@ class Project:
         self.payload = payload
         self.workingDir = './descartesWorkingDir'
 
+
+    def callMethod(self, methodName):
+        method = getattr(self, methodName)
+        method()
+
+
     def getRepo(self):
         trace('Project.getRepo IN')
         currentDir = os.getcwd()
@@ -293,8 +299,7 @@ class Job:
 
         try:
             trace(self.command)
-            methodToCall = getattr(self.project, self.command)
-            self.project.methodToCall()
+            self.project.callMethod(self.command)
         except Exception as exc:
             trace('Job.run: ' + self.name + ': FAILED')
             checkRun.update('completed', 'failure', self.errorMessage, str(exc))
