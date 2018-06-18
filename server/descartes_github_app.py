@@ -251,7 +251,7 @@ class Consumer:
         # create another check_run to run descartes
         jobToRun = Job(CHECK_RUN_STEP_3_NAME, payload, myProject, myApp,
             'runDescartes()',
-            'Descartes completed',,
+            'Descartes completed',
             'See details for Descartes findings',
             'Descartes failed: an exception was thrown')
         jobToRun.run(globals(), locals())
