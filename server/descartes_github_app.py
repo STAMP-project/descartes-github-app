@@ -148,7 +148,7 @@ class Consumer(Channel):
 class Payload:
 
     def __init__(self, jsonPayload):
-        data = jsonPayload
+        self.data = jsonPayload
 
 
     def __getattr__(self, name):
