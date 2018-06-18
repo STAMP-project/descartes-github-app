@@ -65,125 +65,18 @@ def trace(message):
 
 
 ################################################################################
-class Payload:
+class Channel:
 
-    def __init(self, jsonPayload):
-        data = jsonPayload
-
-
-    def __getattr__(self, name):
-        if name == 'pull_request':
-            return(self.data['pull_request'])
-        elif name == 'head_sha':
-            return(self.data['pull_request']['head']['sha'])
-        elif name == 'head_ref':
-            return(self.data['pull_request']['head']['ref'])
-        elif name == 'installation':
-            return(self.data['installation']['id'])
-        elif name == 'clone_url':
-            return(self.data['repository']['clone_url'])
-        elif name == 'repo_url':
-            return(self.data['repository']['url'])
-        raise AttributeError(name)
-        return(None)
-
-
-    def isPullRequest(self):
-        result = False
-        if 'action' in data and data['action'] == 'opened' and 'pull_request' in payload:
-           result = True
-        return(result)
+    def connectRabbitmq(self):
+        connection = pika.BlockingConnection(pika.ConnectionParameters \
+            (host = 'localhost'))
+        channel = connection.channel()
+        channel.queue_declare(DEFAULT_QUEUE, durable = True)
+        return connection, channel
 
 
 ################################################################################
-class PullRequest:
-
-    def __init(self, jsonPullRequest):
-        data = jsonPullRequest
-
-
-################################################################################
-class CheckRun:
-
-    def __init(self, name, payload, gitHubApp):
-        self.name = name
-        self.payload = payload
-        self.gitHubApp = gitHubApp
-        self.checkRunInfo = None
-
-
-    def start(self):
-        params = {'name': self.name, 'status': 'queued',
-                'head_branch': self.payload.head_ref,
-                'head_sha': self.payload.head_sha}
-
-        token = self.gitHubApp.requestToken()
-        response = requests.post(self.payload.repo_url + '/check-runs', 
-                data = json.dumps(params),
-                headers = {
-                    'Authorization': 'token ' + token,  
-                    'Accept': 'application/vnd.github.antiope-preview+json',
-                })
-        trace("start_check_run")
-        if not success(response):
-            raise Exception('Could not create the check run. Code {}. Response: {}'.format(response.status_code, response.text))
-        self.checkRunInfo = json.loads(response.text)
-    
-    
-    def update(self, status, conclusion = None, message = None, summary = ''):
-        '''
-        url - Must contain the check_run id at the end
-        '''
-        token = self.gitHubApp.requestToken()
-        data = {'name': checkRunName, 'status': status}
-        if conclusion:
-            data['status'] = 'completed'
-            data['conclusion'] = conclusion
-            data['completed_at'] = time.strftime('%Y-%m-%dT%H:%M:%SZ')
-        if message:
-            data['output'] = {'title': message, 'summary': summary }
-        response = requests.patch(self.checkRunInfo['url'], data = json.dumps(data),
-            headers = {
-                'Authorization': 'token ' + token,  
-                'Accept': 'application/vnd.github.antiope-preview+json',
-            })
-        trace("CheckRun.update: " + checkRunName)
-        if not success(response):
-            raise Exception('Could not update the check run. Code {}. Response: {}'.format(response.status_code, response.text))
-
-
-
-################################################################################
-class GitHubApp:
-
-    def __init__(self, installation):
-        self.privateKeyFile = 'descartes_app.pem'
-        self.installation = installation
-
-
-    def requestToken(self):
-        token_response = requests.post(GITHUB_API + 'installations/{}/access_tokens'.format(self.installation),
-        headers = {
-            'Authorization': 'Bearer ' + getJwt(),
-            'Accept': 'application/vnd.github.machine-man-preview+json'  
-        })
-        if not success(token_response):
-            raise Exception('Could not get the installation access token. Code: {}, response {}'.format(token_response.status_code, token_response.text))
-        return(json.loads(token_response.text)['token'])
-    
-    
-    def getJwt(self, app_id = APP_ID):
-        pemFile = self.privateKeyFile
-        if os.path.exists(os.path.join('..', pemFile)):
-            pemFile = os.path.join('..', pemFile)
-        with open(pemFile, 'r') as _file:
-            key = RSA.importKey(_file.read())
-            jwtPayload = {'iat': time.time(), 'exp': time.time() + 300, 'iss': app_id}
-            return(jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm = 'RS256').decode('ascii'))
-
-
-################################################################################
-class Producer:
+class Producer(Channel):
 
     def createWork(self, payload):
         connection, channel = connectRabbitmq()    
@@ -195,20 +88,12 @@ class Producer:
         connection.close()
 
 
-    def connectRabbitmq(self):
-        connection = pika.BlockingConnection(pika.ConnectionParameters \
-            (host = 'localhost'))
-        channel = connection.channel()
-        channel.queue_declare(DEFAULT_QUEUE, durable = True)
-        return connection, channel
-
-
 ################################################################################
-# RabbitMQ callback
-def doWorkCallback(channel, method, properties, body):
-    Consumer.Instance.doWork(channel, method, properties, body)
+class Consumer(Channel):
 
-class Consumer:
+    # RabbitMQ callback
+    def doWorkCallback(channel, method, properties, body):
+        Consumer.Instance.doWork(channel, method, properties, body)
 
     Instance = None
 
@@ -216,9 +101,9 @@ class Consumer:
          Consumer.Instance = self
 
     def run(self):
-        _, channel = connect_rabbitmq()
+        _, channel = connectRabbitmq()
         channel.basic_qos(prefetch_count = 1)
-        channel.basic_consume(doWorkCallback, queue = DEFAULT_QUEUE)
+        channel.basic_consume(Consumer.doWorkCallback, queue = DEFAULT_QUEUE)
         trace("waiting for messages")
         channel.start_consuming()
     
@@ -260,32 +145,63 @@ class Consumer:
 
 
 ################################################################################
-class Job:
+class Payload:
 
-    def __init__(self, checkRunName, payload, theProject, gitHubApp,
-            commandToRun, successMessage, successSummary, errorMessage):
-        self.name = checkRunName
-        self.payload = payload
-        self.project = theProject
-        self.gitHubApp = gitHubApp
-        self.command = commandToRun
-        self.successMessage = successMessage
-        self.successSummary = successSummary
-        self.errorMessage = errorMessage
+    def __init(self, jsonPayload):
+        data = jsonPayload
 
 
-    def run(self, globalDict, localDict):
-        checkRun = CheckRun(self.name, self.payload, self.gitHubApp)
-        checkRun.start()
-        checkRun.update('in_progress')
+    def __getattr__(self, name):
+        if name == 'pull_request':
+            return(self.data['pull_request'])
+        elif name == 'head_sha':
+            return(self.data['pull_request']['head']['sha'])
+        elif name == 'head_ref':
+            return(self.data['pull_request']['head']['ref'])
+        elif name == 'installation':
+            return(self.data['installation']['id'])
+        elif name == 'clone_url':
+            return(self.data['repository']['clone_url'])
+        elif name == 'repo_url':
+            return(self.data['repository']['url'])
+        raise AttributeError(name)
+        return(None)
+
+
+    def isPullRequest(self):
+        result = False
+        if 'action' in data and data['action'] == 'opened' and 'pull_request' in payload:
+           result = True
+        return(result)
+
+
+################################################################################
+class GitHubApp:
+
+    def __init__(self, installation):
+        self.privateKeyFile = 'descartes_app.pem'
+        self.installation = installation
+
+
+    def requestToken(self):
+        token_response = requests.post(GITHUB_API + 'installations/{}/access_tokens'.format(self.installation),
+        headers = {
+            'Authorization': 'Bearer ' + getJwt(),
+            'Accept': 'application/vnd.github.machine-man-preview+json'  
+        })
+        if not success(token_response):
+            raise Exception('Could not get the installation access token. Code: {}, response {}'.format(token_response.status_code, token_response.text))
+        return(json.loads(token_response.text)['token'])
     
-        try:
-            eval('self.project.' + self.command, globalDict, localDict)
-        except Exception as exc:
-            checkRun.update('completed', 'failure', self.errorMessage, str(exc))
-            return
-        checkRun.update('completed', 'success', self.successMessage,
-            self.successSummary)
+    
+    def getJwt(self, app_id = APP_ID):
+        pemFile = self.privateKeyFile
+        if os.path.exists(os.path.join('..', pemFile)):
+            pemFile = os.path.join('..', pemFile)
+        with open(pemFile, 'r') as _file:
+            key = RSA.importKey(_file.read())
+            jwtPayload = {'iat': time.time(), 'exp': time.time() + 300, 'iss': app_id}
+            return(jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm = 'RS256').decode('ascii'))
 
 
 ################################################################################
@@ -348,3 +264,82 @@ class Project:
         os.chdir(currentDir)
         if mvnPmp.returncode != 0:
             raise Exception(command + ' failed: ' + stdoutData.decode())
+
+
+################################################################################
+class Job:
+
+    def __init__(self, checkRunName, payload, theProject, gitHubApp,
+            commandToRun, successMessage, successSummary, errorMessage):
+        self.name = checkRunName
+        self.payload = payload
+        self.project = theProject
+        self.gitHubApp = gitHubApp
+        self.command = commandToRun
+        self.successMessage = successMessage
+        self.successSummary = successSummary
+        self.errorMessage = errorMessage
+
+
+    def run(self, globalDict, localDict):
+        checkRun = CheckRun(self.name, self.payload, self.gitHubApp)
+        checkRun.start()
+        checkRun.update('in_progress')
+    
+        try:
+            eval('self.project.' + self.command, globalDict, localDict)
+        except Exception as exc:
+            checkRun.update('completed', 'failure', self.errorMessage, str(exc))
+            return
+        checkRun.update('completed', 'success', self.successMessage,
+            self.successSummary)
+
+
+################################################################################
+class CheckRun:
+
+    def __init(self, name, payload, gitHubApp):
+        self.name = name
+        self.payload = payload
+        self.gitHubApp = gitHubApp
+        self.checkRunInfo = None
+
+
+    def start(self):
+        params = {'name': self.name, 'status': 'queued',
+                'head_branch': self.payload.head_ref,
+                'head_sha': self.payload.head_sha}
+
+        token = self.gitHubApp.requestToken()
+        response = requests.post(self.payload.repo_url + '/check-runs', 
+                data = json.dumps(params),
+                headers = {
+                    'Authorization': 'token ' + token,  
+                    'Accept': 'application/vnd.github.antiope-preview+json',
+                })
+        trace("start_check_run")
+        if not success(response):
+            raise Exception('Could not create the check run. Code {}. Response: {}'.format(response.status_code, response.text))
+        self.checkRunInfo = json.loads(response.text)
+    
+    
+    def update(self, status, conclusion = None, message = None, summary = ''):
+        '''
+        url - Must contain the check_run id at the end
+        '''
+        token = self.gitHubApp.requestToken()
+        data = {'name': checkRunName, 'status': status}
+        if conclusion:
+            data['status'] = 'completed'
+            data['conclusion'] = conclusion
+            data['completed_at'] = time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        if message:
+            data['output'] = {'title': message, 'summary': summary }
+        response = requests.patch(self.checkRunInfo['url'], data = json.dumps(data),
+            headers = {
+                'Authorization': 'token ' + token,  
+                'Accept': 'application/vnd.github.antiope-preview+json',
+            })
+        trace("CheckRun.update: " + checkRunName)
+        if not success(response):
+            raise Exception('Could not update the check run. Code {}. Response: {}'.format(response.status_code, response.text))
