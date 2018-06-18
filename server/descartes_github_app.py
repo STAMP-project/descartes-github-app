@@ -79,7 +79,7 @@ class Channel:
 class Producer(Channel):
 
     def createWork(self, payload):
-        connection, channel = connectRabbitmq()    
+        connection, channel = self.connectRabbitmq()    
         channel.basic_publish(exchange = '', routing_key = DEFAULT_QUEUE, 
             body = json.dumps({'event': payload.data}),
             # make message persistent
@@ -101,7 +101,7 @@ class Consumer(Channel):
          Consumer.Instance = self
 
     def run(self):
-        _, channel = connectRabbitmq()
+        _, channel = self.connectRabbitmq()
         channel.basic_qos(prefetch_count = 1)
         channel.basic_consume(Consumer.doWorkCallback, queue = DEFAULT_QUEUE)
         trace("waiting for messages")
@@ -186,7 +186,7 @@ class GitHubApp:
     def requestToken(self):
         token_response = requests.post(GITHUB_API + 'installations/{}/access_tokens'.format(self.installation),
         headers = {
-            'Authorization': 'Bearer ' + getJwt(),
+            'Authorization': 'Bearer ' + self.getJwt(),
             'Accept': 'application/vnd.github.machine-man-preview+json'  
         })
         if not success(token_response):
@@ -287,6 +287,7 @@ class Job:
         checkRun.update('in_progress')
     
         try:
+            trace('self.project.' + self.command)
             eval('self.project.' + self.command, globalDict, localDict)
         except Exception as exc:
             checkRun.update('completed', 'failure', self.errorMessage, str(exc))
