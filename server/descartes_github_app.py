@@ -223,7 +223,7 @@ class Project:
         currentDir = os.getcwd()
         if os.path.exists(self.workingDir):
             shutil.rmtree(self.workingDir)
-        command = 'git clone ' + self.payload.clone_url  + ' ' + workingDir
+        command = 'git clone ' + self.payload.clone_url  + ' ' + self.workingDir
         trace("getRepo: " + command)
         gitClone = subprocess.Popen(command,
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
