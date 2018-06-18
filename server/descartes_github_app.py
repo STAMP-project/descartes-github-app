@@ -49,6 +49,11 @@ def pullrequest_opened():
 
 ################################################################################
 # functions
+def success(response):
+    # need to be improved
+    return(200 <= response.status_code < 300)
+    
+    
 def dump(data, prefix = 'dump'):
     unique_filename = prefix + '_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '.json'
     with open(unique_filename, 'w') as _file:
@@ -100,17 +105,19 @@ class PullRequest:
 ################################################################################
 class CheckRun:
 
-    def __init(self, name, payload):
+    def __init(self, name, payload, gitHubApp):
         self.name = name
         self.payload = payload
+        self.gitHubApp = gitHubApp
         self.checkRunInfo = None
+
 
     def start(self):
         params = {'name': self.name, 'status': 'queued',
                 'head_branch': self.payload.head_ref,
                 'head_sha': self.payload.head_sha}
 
-        token = request_token(self.payload.installation)
+        token = self.gitHubApp.requestToken()
         response = requests.post(self.payload.repo_url + '/check-runs', 
                 data = json.dumps(params),
                 headers = {
@@ -127,7 +134,7 @@ class CheckRun:
         '''
         url - Must contain the check_run id at the end
         '''
-        token = request_token(self.payload.installation)
+        token = self.gitHubApp.requestToken()
         data = {'name': checkRunName, 'status': status}
         if conclusion:
             data['status'] = 'completed'
@@ -147,33 +154,33 @@ class CheckRun:
 
 
 ################################################################################
-class GitHubToken:
+class GitHubApp:
 
-    def __init__(self):
+    def __init__(self, installation):
+        self.privateKeyFile = 'descartes_app.pem'
+        self.installation = installation
 
-    def request_token(installation):
-        token_response = requests.post(GITHUB_API + 'installations/{}/access_tokens'.format(installation),
+
+    def requestToken(self):
+        token_response = requests.post(GITHUB_API + 'installations/{}/access_tokens'.format(self.installation),
         headers = {
-            'Authorization': 'Bearer ' + get_jwt(),
+            'Authorization': 'Bearer ' + getJwt(),
             'Accept': 'application/vnd.github.machine-man-preview+json'  
         })
         if not success(token_response):
             raise Exception('Could not get the installation access token. Code: {}, response {}'.format(token_response.status_code, token_response.text))
-        return json.loads(token_response.text)['token']
+        return(json.loads(token_response.text)['token'])
     
     
-    def success(response):
-        return 200 <= response.status_code < 300
-    
-    
-    def get_jwt(app_id = APP_ID):
-        pemFile = 'descartes_app.pem'
+    def getJwt(self, app_id = APP_ID):
+        pemFile = self.privateKeyFile
         if os.path.exists(os.path.join('..', pemFile)):
             pemFile = os.path.join('..', pemFile)
         with open(pemFile, 'r') as _file:
             key = RSA.importKey(_file.read())
             jwtPayload = {'iat': time.time(), 'exp': time.time() + 300, 'iss': app_id}
-            return jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm = 'RS256').decode('ascii')
+            return(jwt.encode(jwtPayload, key.exportKey('PEM'), algorithm = 'RS256').decode('ascii'))
+
 
 ################################################################################
 class Producer:
@@ -223,23 +230,27 @@ class Consumer:
         payload = Payload(data['event'])
     
         myProject = Project(payload)
+        myApp = GitHubApp(payload.installation)
 
         # first check_run to get the repo
-        jobToRun = Job(CHECK_RUN_STEP_1_NAME, payload, myProject, 'getRepo()',
+        jobToRun = Job(CHECK_RUN_STEP_1_NAME, payload, myProject, myApp,
+            'getRepo()',
             'The respository was successfully cloned',
             'Clone from {} at {}'.format(clone_url, sha),
             'Cannot get the repositroy: an exception was thrown')
         jobToRun.run(globals(), locals())
     
         # create another check_run to compile
-        jobToRun = Job(CHECK_RUN_STEP_2_NAME, payload, myProject, 'compileProject()',
+        jobToRun = Job(CHECK_RUN_STEP_2_NAME, payload, myProject, myApp,
+            'compileProject()',
             'Project compiled',
             'Clone from {} at {}'.format(clone_url, sha),
             'Cannot compile the project: an exception was thrown')
         jobToRun.run(globals(), locals())
     
         # create another check_run to run descartes
-        jobToRun = Job(CHECK_RUN_STEP_3_NAME, payload, myProject, 'runDescartes()',
+        jobToRun = Job(CHECK_RUN_STEP_3_NAME, payload, myProject, myApp,
+            'runDescartes()',
             'Descartes completed',,
             'See details for Descartes findings',
             'Descartes failed: an exception was thrown')
@@ -251,11 +262,12 @@ class Consumer:
 ################################################################################
 class Job:
 
-    def __init__(self, checkRunName, payload, theProject, commandToRun, successMessage,
-            successSummary, errorMessage):
+    def __init__(self, checkRunName, payload, theProject, gitHubApp,
+            commandToRun, successMessage, successSummary, errorMessage):
         self.name = checkRunName
         self.payload = payload
         self.project = theProject
+        self.gitHubApp = gitHubApp
         self.command = commandToRun
         self.successMessage = successMessage
         self.successSummary = successSummary
@@ -263,7 +275,7 @@ class Job:
 
 
     def run(self, globalDict, localDict):
-        checkRun = CheckRun(self.name, self.payload)
+        checkRun = CheckRun(self.name, self.payload, self.gitHubApp)
         checkRun.start()
         checkRun.update('in_progress')
     
