@@ -33,10 +33,10 @@ application = Flask(__name__)
 @application.route('/', methods = ['GET', 'POST'])
 def pullrequest_opened():
     payload = Payload(request.json)
-    dump(payload, 'other')
+    dump(payload.data, 'other')
     if not payload.isPullRequest():
         return 'No pull request event', 400
-    dump(payload, 'pr')
+    dump(payload.data, 'pr')
 
     # this send the message to the consumer
     # the consumer can be either run manually (workers.py) to debug
