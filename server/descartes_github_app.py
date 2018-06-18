@@ -169,10 +169,8 @@ class Payload:
 
 
     def isPullRequest(self):
-        result = False
-        if 'action' in data and data['action'] == 'opened' and 'pull_request' in payload:
-           result = True
-        return(result)
+        return('action' in self.data and self.data['action'] == 'opened'
+                and 'pull_request' in self.data)
 
 
 ################################################################################
