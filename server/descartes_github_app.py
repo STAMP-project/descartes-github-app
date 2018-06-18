@@ -93,7 +93,6 @@ class Producer(Channel):
 ################################################################################
 class Consumer(Channel):
 
-    # RabbitMQ callback
     def doWorkCallback(channel, method, properties, body):
         Consumer.Instance.doWork(channel, method, properties, body)
 
