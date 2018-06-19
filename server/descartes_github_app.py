@@ -354,10 +354,24 @@ class CheckRun:
             data['conclusion'] = conclusion
             data['completed_at'] = time.strftime('%Y-%m-%dT%H:%M:%SZ')
             if annotationFileName and os.path.exists(annotationFileName):
-                # generate_annotations
                 trace('CheckRun.update: file exists: ' + annotationFileName)
+                with open(annotationFileName) as _file:
+                    data = json.load(_file)
+                annotations = generate_annotations(data['methods'])
+                if annotations:
+                    message = 'Testing issues found'
+                    summary = 'Descartes has found {} testing issue(s)'.format(len(annotations))
+                    data['conclusion'] = 'failure'
+                else:
+                    message = 'No testing issues'
+                    summary = 'Descartes could not find any testing issues'
+                    data['conclusion'] = 'success'
+
         if message:
             data['output'] = {'title': message, 'summary': summary }
+            if annotations:
+                data['output']['annotations'] = annotations
+        
         response = requests.patch(self.checkRunInfo['url'], data = json.dumps(data),
             headers = {
                 'Authorization': 'token ' + token,
