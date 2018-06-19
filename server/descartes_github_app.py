@@ -357,7 +357,9 @@ class CheckRun:
                 trace('CheckRun.update: file exists: ' + annotationFileName)
                 with open(annotationFileName) as _file:
                     data = json.load(_file)
-                annotations = generate_annotations(data['methods'])
+                blobs_url = self.payload.data['repository']['blobs_url']
+                blob_href = blobs_url.replace('{/sha}', '/' + self.payload.head_sha)
+                annotations = generate_annotations(data['methods'], blob_href)
                 if annotations:
                     message = 'Testing issues found'
                     summary = 'Descartes has found {} testing issue(s)'.format(len(annotations))
