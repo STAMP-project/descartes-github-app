@@ -92,7 +92,7 @@ class Producer(Channel):
 
 ################################################################################
 class Consumer(Channel):
-
+    
     def doWorkCallback(channel, method, properties, body):
         Consumer.Instance.doWork(channel, method, properties, body)
 
@@ -348,6 +348,7 @@ class CheckRun:
         trace('CheckRun.update: ' + self.name + ": " + status)
         token = self.gitHubApp.requestToken()
         data = {'name': self.name, 'status': status}
+        annotations = []
         if conclusion:
             trace('CheckRun.update: ' + self.name + ": " + conclusion)
             data['status'] = 'completed'
@@ -368,12 +369,8 @@ class CheckRun:
                     message = 'No testing issues'
                     summary = 'Descartes could not find any testing issues'
                     data['conclusion'] = 'success'
-
         if message:
-            data['output'] = {'title': message, 'summary': summary }
-            if annotations:
-                data['output']['annotations'] = annotations
-        
+            data['output'] = {'title': message, 'summary': summary, 'annotations': annotations } 
         response = requests.patch(self.checkRunInfo['url'], data = json.dumps(data),
             headers = {
                 'Authorization': 'token ' + token,
