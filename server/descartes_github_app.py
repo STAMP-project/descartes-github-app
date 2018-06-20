@@ -371,6 +371,7 @@ class CheckRun:
                     data['conclusion'] = 'success'
         if message:
             data['output'] = {'title': message, 'summary': summary, 'annotations': annotations } 
+        dump(data, 'update')
         response = requests.patch(self.checkRunInfo['url'], data = json.dumps(data),
             headers = {
                 'Authorization': 'token ' + token,
