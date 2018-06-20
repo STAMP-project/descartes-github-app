@@ -168,6 +168,8 @@ class Payload:
             return(self.data['repository']['clone_url'])
         elif name == 'repo_url':
             return(self.data['repository']['url'])
+        elif name == 'html_url':
+            return(self.data['repository']['html_url'])
         raise AttributeError(name)
         return(None)
 
@@ -358,7 +360,7 @@ class CheckRun:
                 trace('CheckRun.update: file exists: ' + annotationFileName)
                 with open(annotationFileName) as _file:
                     method_data = json.load(_file)
-                blob_href = '{}/blob/{}/'.format(self.payload.repo_url, self.payload.head_sha)
+                blob_href = '{}/blob/{}/'.format(self.payload.html_url, self.payload.head_sha)
                 trace('blob_href: ' + blob_href)
                 annotations = generate_annotations(method_data['methods'], blob_href)
                 if annotations:
