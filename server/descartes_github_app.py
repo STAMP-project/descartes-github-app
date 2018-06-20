@@ -360,6 +360,7 @@ class CheckRun:
                     method_data = json.load(_file)
                 blobs_url = self.payload.data['repository']['blobs_url']
                 blob_href = blobs_url.replace('{/sha}', '/' + self.payload.head_sha)
+                trace('blobs_url: ' + blobs_url + " - haed_sha: " + self.payload.head_sha + " - blob_href: " + blob_href)
                 annotations = generate_annotations(method_data['methods'], blob_href)
                 if annotations:
                     message = 'Testing issues found'
