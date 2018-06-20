@@ -45,8 +45,8 @@ def annotation_for_method(method, blob):
         'end_line': ''
     }
     undetected_mutations = [mutant for mutant in method['mutations'] if mutant['status'] == 'SURVIVED']
-    annotation['filename'] = method['file-name'] 
-    annotation['blob_href'] = urljoin(blob, 'src/main/java/{}/{}'.format(method['package'], method['file-name']))
+    annotation['filename'] = 'src/main/java/{}/{}'.format(method['package'], method['file-name'])
+    annotation['blob_href'] = urljoin(blob, annotation['filename'])
     annotation['start_line'] = annotation['end_line'] = method['line-number']
     covering_test_cases = len(method['tests'])
     assert covering_test_cases > 0
