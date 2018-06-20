@@ -37,7 +37,7 @@ def annotation_for_method(method, blob):
     annotation = {
         'filename': '',
         'blob_href': '',
-        'warning_level': 'warning',
+        'warning_level': 'failure',
         'title': 'Undetected extreme transformations',
         'message': '',
         'raw_details': '',
