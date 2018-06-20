@@ -52,7 +52,7 @@ def annotation_for_method(method, blob):
     assert covering_test_cases > 0
     if covering_test_cases > 1:
         annotation['raw_details'] = 'This method is covered by ' + ( 'only one test case.' if covering_test_cases == 1 else '{} test cases.'.format(covering_test_cases))
-    if first_mutant['mutator'] == 'void':
+    if 'void' in method['not-detected']:
         assert classification == 'pseudo-tested' and len(method['mutations']) == 1 # There should be only one mutation and the method should be pseudo-tested
         annotation['message'] = 'The body of this method can be removed and no test case fails.'
         return annotation
