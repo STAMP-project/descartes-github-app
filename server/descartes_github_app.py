@@ -226,8 +226,10 @@ class Project:
         stdin = subprocess.PIPE, stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = gitClone.communicate()
+        trace('         gitClone.returncode = ' + str(gitClone.returncode))
         if gitClone.returncode != 0:
             self.errorMessage = stderrData.decode()
+            trace('         errorMessage: ' + self.project.errorMessage)
             raise Exception(command + ' failed: ' + self.errorMessage)
 
         os.chdir(self.workingDir)
@@ -238,6 +240,12 @@ class Project:
             stdin = subprocess.PIPE, stdout = subprocess.PIPE,
             stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = gitCheckout.communicate()
+        trace('         gitCheckout.returncode = ' + str(gitCheckout.returncode))
+        if gitCheckout.returncode != 0:
+            self.errorMessage = stderrData.decode()
+            trace('         errorMessage: ' + self.project.errorMessage)
+            raise Exception(command + ' failed: ' + self.errorMessage)
+
         os.chdir(currentDir)
         message = self.getBuildResult(stdoutData, stderrData)
         self.successMessage = 'The respository was successfully cloned',
@@ -245,11 +253,6 @@ class Project:
                 self.payload.head_sha) + message
         trace('         successMessage: ' + self.project.successMessage)
         trace('         successSummary: ' + self.project.successSummary)
-        trace('         errorMessage: ' + self.project.errorMessage)
-        trace('         gitCheckout.returncode = ' + str(gitCheckout.returncode))
-        if gitCheckout.returncode != 0:
-            self.errorMessage = message
-            raise Exception(command + ' failed: ' + self.errorMessage)
 
 
     def compileProject(self):
@@ -262,13 +265,18 @@ class Project:
             stdin = subprocess.PIPE, stdout = subprocess.PIPE,
             stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = mvnInstall.communicate()
+        trace('         mvnInstall.returncode = ' + str(mvnInstall.returncode))
+        if mvnInstall.returncode != 0:
+            self.errorMessage = 'Compilation failed\n' + stderrData.decode()
+            trace('         errorMessage: ' + self.project.errorMessage)
+            raise Exception(command + ' failed: ' + self.errorMessage)
+
         os.chdir(currentDir)
         message = self.getBuildResult(stdoutData, stderrData)
         self.successMessage = 'Project compiled'
         self.successSummary = message
-        if mvnInstall.returncode != 0:
-            self.errorMessage = 'Compilation failed\n' + message
-            raise Exception(command + ' failed: ' + self.errorMessage)
+        trace('         successMessage: ' + self.project.successMessage)
+        trace('         successSummary: ' + self.project.successSummary)
 
 
     def runDescartes(self):
@@ -282,13 +290,13 @@ class Project:
             stdin = subprocess.PIPE, stdout = subprocess.PIPE,
             stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = mvnPmp.communicate()
+        if mvnPmp.returncode != 0:
+            self.errorMessage = 'Descartes failed: an exception was thrown\n' + stderrData.decode()
+            raise Exception(command + ' failed: ' + self.errorMessage)
         os.chdir(currentDir)
         message = self.getBuildResult(stdoutData, stderrData)
         self.successMessage = 'Descartes completed'
         self.successSummary = 'See details for Descartes findings'
-        if mvnPmp.returncode != 0:
-            self.errorMessage = 'Descartes failed: an exception was thrown\n' + message
-            raise Exception(command + ' failed: ' + self.errorMessage)
 
 
         def getBuildResult(self, stdoutData, stderrData):
