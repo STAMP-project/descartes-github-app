@@ -310,7 +310,7 @@ class Project:
         trace('        successMessage: ' + self.successMessage)
         trace('        successSummary: ' + self.successSummary)
         trace('setMessages OUT')
-        return(message)
+        return
 
 
 ################################################################################
