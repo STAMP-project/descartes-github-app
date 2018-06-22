@@ -329,9 +329,15 @@ class Job:
             self.project.callMethod(self.command)
         except Exception as exc:
             trace('Job.run: ' + self.name + ': FAILED')
+            trace('         successMessage' + self.project.successMessage)
+            trace('         successSummary' + self.project.successSummary)
+            trace('         errorMessage' + self.project.errorMessage)
             checkRun.update('completed', 'failure', self.project.errorMessage, str(exc))
             return
         trace('Job.run: ' + self.name + ': OK')
+        trace('         successMessage' + self.project.successMessage)
+        trace('         successSummary' + self.project.successSummary)
+        trace('         errorMessage' + self.project.errorMessage)
         checkRun.update('completed', 'success', self.project.successMessage,
             self.project.successSummary, self.project.annotationFileName)
 
