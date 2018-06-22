@@ -301,24 +301,24 @@ class Project:
         self.successSummary = 'See details for Descartes findings'
 
 
-        def getBuildResult(self, stdoutData, stderrData):
-            trace('getBuildResult IN')
-            message = ""
-            if stderrData:
-                message = stderrData.decode()
-            elif stdoutData and len(stdoutData) > 0:
-                trace('getBuildResult - stdout ')
-                output = stdoutData.decode()
-                message = output
-                buildIndex = output.find("[INFO] BUILD SUCCESS")
-                trace('buildIndex: ' + str(buildIndex))
-                if buildIndex > 0:
-                    startIndex = output.rfind("\n", 0, buildIndex - 1)
-                    trace('startIndex: ' + str(startIndex))
-                    if startIndex > 0:
-                        message = output[startIndex + 1:]
-            trace('getBuildResult OUT: message: ' + message)
-            return(message)
+    def getBuildResult(self, stdoutData, stderrData):
+        trace('getBuildResult IN')
+        message = ""
+        if stderrData:
+            message = stderrData.decode()
+        elif stdoutData and len(stdoutData) > 0:
+            trace('getBuildResult - stdout ')
+            output = stdoutData.decode()
+            message = output
+            buildIndex = output.find("[INFO] BUILD SUCCESS")
+            trace('buildIndex: ' + str(buildIndex))
+            if buildIndex > 0:
+                startIndex = output.rfind("\n", 0, buildIndex - 1)
+                trace('startIndex: ' + str(startIndex))
+                if startIndex > 0:
+                    message = output[startIndex + 1:]
+        trace('getBuildResult OUT: message: ' + message)
+        return(message)
 
 
 ################################################################################
