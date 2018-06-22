@@ -227,9 +227,8 @@ class Project:
         stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = gitClone.communicate()
         trace('         gitClone.returncode = ' + str(gitClone.returncode))
+        self.setMessages(stdoutData, stderrData, 'Getting repository failed\n')
         if gitClone.returncode != 0:
-            self.errorMessage = stderrData.decode()
-            trace('         errorMessage: ' + self.project.errorMessage)
             raise Exception(command + ' failed: ' + self.errorMessage)
 
         os.chdir(self.workingDir)
@@ -241,20 +240,15 @@ class Project:
             stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = gitCheckout.communicate()
         trace('         gitCheckout.returncode = ' + str(gitCheckout.returncode))
+        self.setMessages(stdoutData, stderrData,
+            'Getting repository failed\n',
+            'The repository was successfully cloned',
+            'Clone from {} at {}\n'.format(self.payload.clone_url,
+                self.payload.head_sha))
         if gitCheckout.returncode != 0:
-            self.errorMessage = stderrData.decode()
-            trace('         errorMessage: ' + self.project.errorMessage)
             raise Exception(command + ' failed: ' + self.errorMessage)
 
-        trace('currentDir: ' + currentDir)
         os.chdir(currentDir)
-        message = self.getBuildResult(stdoutData, stderrData)
-        trace('message: ' + message)
-        self.successMessage = 'The respository was successfully cloned',
-        self.successSummary = 'Clone from {} at {}\n'.format(self.payload.clone_url,
-                self.payload.head_sha) + message
-        trace('         successMessage: ' + self.project.successMessage)
-        trace('         successSummary: ' + self.project.successSummary)
 
 
     def compileProject(self):
@@ -268,17 +262,12 @@ class Project:
             stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = mvnInstall.communicate()
         trace('         mvnInstall.returncode = ' + str(mvnInstall.returncode))
+        self.setMessages(stdoutData, stderrData, 'Compilation failed\n',
+            'Project compiled')
         if mvnInstall.returncode != 0:
-            self.errorMessage = 'Compilation failed\n' + stderrData.decode()
-            trace('         errorMessage: ' + self.project.errorMessage)
             raise Exception(command + ' failed: ' + self.errorMessage)
 
         os.chdir(currentDir)
-        message = self.getBuildResult(stdoutData, stderrData)
-        self.successMessage = 'Project compiled'
-        self.successSummary = message
-        trace('         successMessage: ' + self.project.successMessage)
-        trace('         successSummary: ' + self.project.successSummary)
 
 
     def runDescartes(self):
@@ -292,32 +281,35 @@ class Project:
             stdin = subprocess.PIPE, stdout = subprocess.PIPE,
             stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = mvnPmp.communicate()
+        self.setMessages(stdoutData, stderrData,
+            'Descartes failed: an exception was thrown\n',
+            'Descartes completed',
+            'See details for Descartes findings')
         if mvnPmp.returncode != 0:
-            self.errorMessage = 'Descartes failed: an exception was thrown\n' + stderrData.decode()
             raise Exception(command + ' failed: ' + self.errorMessage)
         os.chdir(currentDir)
-        message = self.getBuildResult(stdoutData, stderrData)
-        self.successMessage = 'Descartes completed'
-        self.successSummary = 'See details for Descartes findings'
 
 
-    def getBuildResult(self, stdoutData, stderrData):
-        trace('getBuildResult IN')
-        message = ""
+    def setMessages(self, stdoutData, stderrData, errorPrefix = '',
+            successMessage = '', summaryPrefix = ''):
+        trace('setMessages IN')
+        self.errorMessage = errorPrefix
+        self.successMessage = successMessage
+        self.successSummary = summaryPrefix
         if stderrData:
-            message = stderrData.decode()
+            self.errorMessage = errorPrefix + stderrData.decode()
         elif stdoutData and len(stdoutData) > 0:
-            trace('getBuildResult - stdout ')
             output = stdoutData.decode()
-            message = output
+            self.successSummary = summaryPrefix + output
             buildIndex = output.find("[INFO] BUILD SUCCESS")
-            trace('buildIndex: ' + str(buildIndex))
             if buildIndex > 0:
                 startIndex = output.rfind("\n", 0, buildIndex - 1)
-                trace('startIndex: ' + str(startIndex))
                 if startIndex > 0:
-                    message = output[startIndex + 1:]
-        trace('getBuildResult OUT: message: ' + message)
+                    self.successSummary = summaryPrefix + output[startIndex + 1:]
+        trace('        errorMessage: ' + self.errorMessage)
+        trace('        successMessage: ' + self.successMessage)
+        trace('        successSummary: ' + self.successSummary)
+        trace('setMessages OUT')
         return(message)
 
 
