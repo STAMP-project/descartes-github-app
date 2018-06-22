@@ -246,6 +246,7 @@ class Project:
             trace('         errorMessage: ' + self.project.errorMessage)
             raise Exception(command + ' failed: ' + self.errorMessage)
 
+        trace('currentDir: ' + currentDir)
         os.chdir(currentDir)
         message = self.getBuildResult(stdoutData, stderrData)
         self.successMessage = 'The respository was successfully cloned',
@@ -300,21 +301,20 @@ class Project:
 
 
         def getBuildResult(self, stdoutData, stderrData):
+            message = ""
             if stderrData:
                 message = stderrData.decode()
-            elif not stdoutData or len(stdoutData) == 0:
-                message = ""
-            else:
+            elif stdoutData and len(stdoutData) > 0:
                 output = stdoutData.decode()
+                message = output
                 buildIndex = output.find("[INFO] BUILD SUCCESS")
+                trace('buildIndex: ' + str(buildIndex))
                 if buildIndex > 0:
                     startIndex = output.rfind("\n", 0, buildIndex - 1)
+                    trace('startIndex: ' + str(startIndex))
                     if startIndex > 0:
                         message = output[startIndex + 1:]
-                    else:
-                        message = output
-                else:
-                    message = output
+            trace('message: ' + message)
             return(message)
 
 
