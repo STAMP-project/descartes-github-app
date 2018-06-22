@@ -310,15 +310,12 @@ class Project:
 class Job:
 
     def __init__(self, checkRunName, payload, theProject, gitHubApp,
-            commandToRun, successMessage, successSummary, errorMessage):
+            commandToRun):
         self.name = checkRunName
         self.payload = payload
         self.project = theProject
         self.gitHubApp = gitHubApp
         self.command = commandToRun
-        self.successMessage = successMessage
-        self.successSummary = successSummary
-        self.errorMessage = errorMessage
 
 
     def run(self):
