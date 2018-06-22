@@ -243,6 +243,10 @@ class Project:
         self.successMessage = 'The respository was successfully cloned',
         self.successSummary = 'Clone from {} at {}\n'.format(self.payload.clone_url,
                 self.payload.head_sha) + message
+        trace('         successMessage: ' + self.project.successMessage)
+        trace('         successSummary: ' + self.project.successSummary)
+        trace('         errorMessage: ' + self.project.errorMessage)
+        trace('         gitCheckout.returncode = ' + str(gitCheckout.returncode))
         if gitCheckout.returncode != 0:
             self.errorMessage = message
             raise Exception(command + ' failed: ' + self.errorMessage)
@@ -329,15 +333,9 @@ class Job:
             self.project.callMethod(self.command)
         except Exception as exc:
             trace('Job.run: ' + self.name + ': FAILED')
-            trace('         successMessage' + self.project.successMessage)
-            trace('         successSummary' + self.project.successSummary)
-            trace('         errorMessage' + self.project.errorMessage)
             checkRun.update('completed', 'failure', self.project.errorMessage, str(exc))
             return
         trace('Job.run: ' + self.name + ': OK')
-        trace('         successMessage' + self.project.successMessage)
-        trace('         successSummary' + self.project.successSummary)
-        trace('         errorMessage' + self.project.errorMessage)
         checkRun.update('completed', 'success', self.project.successMessage,
             self.project.successSummary, self.project.annotationFileName)
 
