@@ -120,29 +120,17 @@ class Consumer(Channel):
 
         # first check_run to get the repo
         trace("")
-        jobToRun = Job(CHECK_RUN_STEP_1_NAME, payload, myProject, myApp,
-            'getRepo',
-            'The respository was successfully cloned',
-            'Clone from {} at {}'.format(payload.clone_url, payload.head_sha),
-            'Cannot get the repository: an exception was thrown')
+        jobToRun = Job(CHECK_RUN_STEP_1_NAME, payload, myProject, myApp, 'getRepo')
         jobToRun.run()
 
         # create another check_run to compile
         trace("")
-        jobToRun = Job(CHECK_RUN_STEP_2_NAME, payload, myProject, myApp,
-            'compileProject',
-            'Project compiled',
-            'Clone from {} at {}'.format(payload.clone_url, payload.head_sha),
-            'Cannot compile the project: an exception was thrown')
+        jobToRun = Job(CHECK_RUN_STEP_2_NAME, payload, myProject, myApp, 'compileProject')
         jobToRun.run()
 
         # create another check_run to run descartes
         trace("")
-        jobToRun = Job(CHECK_RUN_STEP_3_NAME, payload, myProject, myApp,
-            'runDescartes',
-            'Descartes completed',
-            'See details for Descartes findings',
-            'Descartes failed: an exception was thrown')
+        jobToRun = Job(CHECK_RUN_STEP_3_NAME, payload, myProject, myApp, 'runDescartes')
         jobToRun.run()
 
         channel.basic_ack(delivery_tag = method.delivery_tag)
@@ -216,6 +204,10 @@ class Project:
         self.workingDir = os.path.join('.', 'descartesWorkingDir')
         self.annotationFileName = os.path.join(self.workingDir,
                 'target', 'pit-reports', 'methods.json')
+        # filled in by methods
+        self.successMessage = ''
+        self.successSummary = ''
+        self.errorMessage = ''
 
 
     def callMethod(self, methodName):
@@ -235,7 +227,8 @@ class Project:
         stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = gitClone.communicate()
         if gitClone.returncode != 0:
-            raise Exception('git clone failed: ' + stdoutData.decode())
+            self.errorMessage = stderrData.decode()
+            raise Exception(command + ' failed: ' + self.errorMessage)
 
         os.chdir(self.workingDir)
 
@@ -246,8 +239,13 @@ class Project:
             stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = gitCheckout.communicate()
         os.chdir(currentDir)
+        message = self.getBuildResult(stdoutData, stderrData)
+        self.successMessage = 'The respository was successfully cloned',
+        self.successSummary = 'Clone from {} at {}\n'.format(self.payload.clone_url,
+                self.payload.head_sha) + message
         if gitCheckout.returncode != 0:
-            raise Exception('git checkout failed: ' + stdoutData)
+            self.errorMessage = message
+            raise Exception(command + ' failed: ' + self.errorMessage)
 
 
     def compileProject(self):
@@ -261,8 +259,12 @@ class Project:
             stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = mvnInstall.communicate()
         os.chdir(currentDir)
+        message = self.getBuildResult(stdoutData, stderrData)
+        self.successMessage = 'Project compiled'
+        self.successSummary = message
         if mvnInstall.returncode != 0:
-            raise Exception(command + ' failed: ' + stdoutData.decode())
+            self.errorMessage = 'Compilation failed\n' + message
+            raise Exception(command + ' failed: ' + self.errorMessage)
 
 
     def runDescartes(self):
@@ -277,8 +279,31 @@ class Project:
             stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = mvnPmp.communicate()
         os.chdir(currentDir)
+        message = self.getBuildResult(stdoutData, stderrData)
+        self.successMessage = 'Descartes completed'
+        self.successSummary = 'See details for Descartes findings'
         if mvnPmp.returncode != 0:
-            raise Exception(command + ' failed: ' + stdoutData.decode())
+            self.errorMessage = 'Descartes failed: an exception was thrown\n' + message
+            raise Exception(command + ' failed: ' + self.errorMessage)
+
+
+        def getBuildResult(self, stdoutData, stderrData):
+            if stderrData:
+                message = stderrData.decode()
+            elif not stdoutData or len(stdoutData) == 0:
+                message = ""
+            else:
+                output = stdoutData.decode()
+                buildIndex = output.find("[INFO] BUILD SUCCESS")
+                if buildIndex > 0:
+                    startIndex = output.rfind("\n", 0, buildIndex - 1)
+                    if startIndex > 0:
+                        message = output[startIndex + 1:]
+                    else:
+                        message = output
+                else:
+                    message = output
+            return(message)
 
 
 ################################################################################
@@ -307,11 +332,11 @@ class Job:
             self.project.callMethod(self.command)
         except Exception as exc:
             trace('Job.run: ' + self.name + ': FAILED')
-            checkRun.update('completed', 'failure', self.errorMessage, str(exc))
+            checkRun.update('completed', 'failure', self.project.errorMessage, str(exc))
             return
         trace('Job.run: ' + self.name + ': OK')
-        checkRun.update('completed', 'success', self.successMessage,
-            self.successSummary, self.project.annotationFileName)
+        checkRun.update('completed', 'success', self.project.successMessage,
+            self.project.successSummary, self.project.annotationFileName)
 
 
 ################################################################################
