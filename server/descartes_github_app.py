@@ -249,6 +249,7 @@ class Project:
         trace('currentDir: ' + currentDir)
         os.chdir(currentDir)
         message = self.getBuildResult(stdoutData, stderrData)
+        trace('message: ' + message)
         self.successMessage = 'The respository was successfully cloned',
         self.successSummary = 'Clone from {} at {}\n'.format(self.payload.clone_url,
                 self.payload.head_sha) + message
@@ -301,10 +302,12 @@ class Project:
 
 
         def getBuildResult(self, stdoutData, stderrData):
+            trace('getBuildResult IN')
             message = ""
             if stderrData:
                 message = stderrData.decode()
             elif stdoutData and len(stdoutData) > 0:
+                trace('getBuildResult - stdout ')
                 output = stdoutData.decode()
                 message = output
                 buildIndex = output.find("[INFO] BUILD SUCCESS")
@@ -314,7 +317,7 @@ class Project:
                     trace('startIndex: ' + str(startIndex))
                     if startIndex > 0:
                         message = output[startIndex + 1:]
-            trace('message: ' + message)
+            trace('getBuildResult OUT: message: ' + message)
             return(message)
 
 
