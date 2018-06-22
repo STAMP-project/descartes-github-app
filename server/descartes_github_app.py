@@ -292,7 +292,6 @@ class Project:
 
     def setMessages(self, stdoutData, stderrData, errorPrefix = '',
             successMessage = '', summaryPrefix = ''):
-        trace('setMessages IN')
         self.errorMessage = errorPrefix
         self.successMessage = successMessage
         self.successSummary = summaryPrefix
@@ -306,10 +305,6 @@ class Project:
                 startIndex = output.rfind("\n", 0, buildIndex - 1)
                 if startIndex > 0:
                     self.successSummary = summaryPrefix + output[startIndex + 1:]
-        trace('        errorMessage: ' + self.errorMessage)
-        trace('        successMessage: ' + self.successMessage)
-        trace('        successSummary: ' + self.successSummary)
-        trace('setMessages OUT')
         return
 
 
