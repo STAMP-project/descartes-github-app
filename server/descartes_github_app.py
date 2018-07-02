@@ -158,6 +158,8 @@ class Payload:
             return(self.data['repository']['url'])
         elif name == 'html_url':
             return(self.data['repository']['html_url'])
+        elif name == 'base_sha':
+            return(self.data['pull_request']['base']['sha'])
         raise AttributeError(name)
         return(None)
 
@@ -208,6 +210,7 @@ class Project:
         self.successMessage = ''
         self.successSummary = ''
         self.errorMessage = ''
+        self.changes = {}
 
 
     def callMethod(self, methodName):
@@ -223,8 +226,8 @@ class Project:
         command = 'git clone ' + self.payload.clone_url  + ' ' + self.workingDir
         trace("getRepo: " + command)
         gitClone = subprocess.Popen(command,
-        stdin = subprocess.PIPE, stdout = subprocess.PIPE,
-        stderr = subprocess.STDOUT, shell = True)
+            stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+            stderr = subprocess.STDOUT, shell = True)
         stdoutData, stderrData = gitClone.communicate()
         trace('         gitClone.returncode = ' + str(gitClone.returncode))
         self.setMessages(stdoutData, stderrData, 'Getting repository failed\n')
@@ -232,6 +235,20 @@ class Project:
             raise Exception(command + ' failed: ' + self.errorMessage)
 
         os.chdir(self.workingDir)
+
+        gitDiffResult = 'gitdiff_res.txt'
+        command = 'git diff -U0 ' + self.payload.payload.head_sha  + ' ' + \
+            self.payload.base_sha + ' >' + gitDiffResult
+        trace("getRepo: " + command)
+        gitDiff = subprocess.Popen(command,
+            stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+            stderr = subprocess.STDOUT, shell = True)
+        stdoutData, stderrData = gitDiff.communicate()
+        trace('         gitDiff.returncode = ' + str(gitDiff.returncode))
+        self.setMessages(stdoutData, stderrData, 'Getting repository failed\n')
+        if gitDiff.returncode != 0:
+            raise Exception(command + ' failed: ' + self.errorMessage)
+        self.readGitDiffFile(gitDiffResult)
 
         command = 'git checkout ' + self.payload.head_sha
         trace("getRepo: " + command)
@@ -306,6 +323,52 @@ class Project:
                 if startIndex > 0:
                     self.successSummary = summaryPrefix + output[startIndex + 1:]
         return
+
+
+    @staticmethod
+    def readFileToList(filePath):
+        theFile = open(filePath, 'r')
+        fileContent = []
+        for line in theFile:
+            fileContent.append(line.rstrip(' \t\n\r').lstrip(' \t'))
+        theFile.close()
+        return(fileContent)
+
+
+    @staticmethod
+    def parseLineNumbers(line):
+        data = line.split(' ')
+        addInfo = data[2][1:]
+        numSep = ','
+        if numSep in addInfo:
+            addData = addInfo.split(numSep)
+            start = int(addData[0])
+            count = int(addData[1])
+        else:
+            start = int(addInfo)
+            count = 1
+        return(start, count)
+
+
+    def readGitDiffFile(self, fileName):
+        fileContent = Project.readFileToList(fileName)
+        srcPath = ''
+        linesList = []
+        for aLine in fileContent:
+            if aLine[0:6] == '+++ b/':
+                # store the previous results if any
+                if len(srcPath) > 0 and len(linesList) > 0:
+                    self.changes[srcPath] = linesList
+                # get the file name
+                srcPath = aLine[6:]
+                linesList = []
+            elif aLine[0:2] == '@@':
+                addStart, addCount = Project.parseLineNumbers(aLine)
+                if addCount > 0:
+                    linesList.append(addStart)
+        # don't forget the last file
+        if len(srcPath) > 0 and len(linesList) > 0:
+            self.changes[srcPath] = linesList
 
 
 ################################################################################
