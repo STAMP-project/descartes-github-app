@@ -369,6 +369,7 @@ class Project:
         # don't forget the last file
         if len(srcPath) > 0 and len(linesList) > 0:
             self.changes[srcPath] = linesList
+        trace('changes: ' + str(self.changes))
 
 
 ################################################################################
