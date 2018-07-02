@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 ################################################################################
 
+import os.path
 import argparse
 
 ################################################################################
@@ -42,26 +43,37 @@ class Project:
         fileContent = Project.readFileToList(self.diffFileName)
         srcPath = ''
         linesList = []
+        aChange = ''
         for aLine in fileContent:
             if aLine[0:6] == '+++ b/':
                 # store the previous results if any
                 if len(srcPath) > 0 and len(linesList) > 0:
                     self.changes[srcPath] = linesList
+                    self.saveChanges(aChange[:-1])
                 # get the file name
                 srcPath = aLine[6:]
                 linesList = []
+                aChange = srcPath + ':'
             elif aLine[0:2] == '@@':
                 addStart, addCount = Project.parseLineNumbers(aLine)
                 if addCount > 0:
                     linesList.append(addStart)
+                    aChange = aChange + str(addStart) + ','
         # don't forget the last file
         if len(srcPath) > 0 and len(linesList) > 0:
             self.changes[srcPath] = linesList
+            self.saveChanges(aChange[:-1])
+
+
+    def saveChanges(self, line):
+        outputFileName = os.path.join('target', 'descartes_changes.txt')
+        outputFile = open(outputFileName, 'a')
+        outputFile.write(line + '\n')
+        outputFile.close()
 
 
     def printChanges(self):
         print(self.changes)
-
 
 
 ################################################################################
