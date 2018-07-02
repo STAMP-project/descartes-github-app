@@ -377,7 +377,11 @@ class Project:
 
 
     def saveChanges(self, line):
-        outputFileName = os.path.join('target', 'descartes_changes.txt')
+        dirName = 'target'
+        fileName = 'descartes_changes.txt'
+        outputFileName = os.path.join(dirName, fileName)
+        if not os.path.isdir(dirName):
+            os.mkdir(dirName)
         outputFile = open(outputFileName, 'a')
         outputFile.write(line + '\n')
         outputFile.close()
