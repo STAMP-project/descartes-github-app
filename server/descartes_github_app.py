@@ -237,7 +237,7 @@ class Project:
         os.chdir(self.workingDir)
 
         gitDiffResult = 'gitdiff_res.txt'
-        command = 'git diff -U0 ' + self.payload.head_sha  + ' ' + self.payload.base_sha + ' >' + gitDiffResult
+        command = 'git diff -U0 ' + self.payload.head_sha + ' ' + self.payload.base_sha + ' >' + gitDiffResult
         trace("getRepo: " + command)
         gitDiff = subprocess.Popen(command,
             stdin = subprocess.PIPE, stdout = subprocess.PIPE,
