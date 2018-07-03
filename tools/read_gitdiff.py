@@ -8,8 +8,9 @@ import argparse
 ################################################################################
 class Project:
 
-    def __init__(self):
-        self.diffFileName = ''
+    def __init__(self, inputFileName, outputFileName = 'changes.txt'):
+        self.diffFileName = inputFileName
+        self.changesFileName = outputFileName
         self.changes = {}
 
 
@@ -38,8 +39,9 @@ class Project:
         return(start, count)
 
 
-    def readGitDiffFile(self, fileName):
-        self.diffFileName = fileName
+    def readGitDiffFile(self):
+        if os.path.isfile(self.changesFileName):
+            os.remove(self.changesFileName)
         fileContent = Project.readFileToList(self.diffFileName)
         srcPath = ''
         linesList = []
@@ -66,8 +68,7 @@ class Project:
 
 
     def saveChanges(self, line):
-        outputFileName = os.path.join('target', 'descartes_changes.txt')
-        outputFile = open(outputFileName, 'a')
+        outputFile = open(self.changesFileName, 'a')
         outputFile.write(line + '\n')
         outputFile.close()
 
@@ -83,6 +84,6 @@ if __name__ == '__main__':
        help = 'Name of the file to read')
     myArgs = myParser.parse_args()
 
-    myProject = Project()
-    myProject.readGitDiffFile(myArgs.file_name)
+    myProject = Project(myArgs.file_name, 'changes.txt')
+    myProject.readGitDiffFile()
     myProject.printChanges()
