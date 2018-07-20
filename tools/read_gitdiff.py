@@ -53,7 +53,7 @@ class Project:
                     self.changes[srcPath] = linesList
                     self.saveChanges(aChange[:-1])
                 # get the file name
-                srcPath = aLine[6:]
+                srcPath = os.path.join(os.getcwd(), aLine[6:])
                 linesList = []
                 aChange = srcPath + ':'
             elif aLine[0:2] == '@@':

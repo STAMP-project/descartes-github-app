@@ -204,6 +204,7 @@ class Project:
     def __init__(self, payload):
         self.payload = payload
         self.workingDir = os.path.join('.', 'descartesWorkingDir')
+        self.workingDirPath = os.path.join(os.getcwd(), 'descartesWorkingDir')
         self.annotationFileName = os.path.join(self.workingDir,
                 'target', 'pit-reports', 'methods.json')
         # filled in by methods
@@ -361,7 +362,7 @@ class Project:
                     self.changes[srcPath] = linesList
                     self.saveChanges(aChange[:-1])
                 # get the file name
-                srcPath = aLine[6:]
+                srcPath = os.path.join(os.getcwd(), aLine[6:])
                 linesList = []
                 aChange = srcPath + ':'
             elif aLine[0:2] == '@@':
